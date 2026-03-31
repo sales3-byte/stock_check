@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Stock Verify — Multispan Controls</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+:root{
+  --card:#fcfcfc;--muted:#efefef;--border:#d8d8d8;--primary:#644a40;--background:#f9f9f9;
+  --foreground:#202020;--destructive:#e54d2e;--muted-foreground:#646464;--primary-foreground:#ffffff;
+  --bg:var(--background);--surf:var(--card);--surf2:var(--muted);--bdr:var(--border);
+  --txt:var(--foreground);--mut:var(--muted-foreground);--acc:var(--primary);
+  --grn:#2d7a4f;--red:var(--destructive);--amb:#b86b00;
+  --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif;
+}
+.dark{
+  --card:#191919;--muted:#222222;--border:#2e2b24;--primary:#ffe0c2;--background:#111111;
+  --foreground:#eeeeee;--destructive:#e54d2e;--muted-foreground:#b4b4b4;--primary-foreground:#081a1b;
+  --bg:var(--background);--surf:var(--card);--surf2:var(--muted);--bdr:var(--border);
+  --txt:var(--foreground);--mut:var(--muted-foreground);--acc:var(--primary);
+  --grn:#34c77b;--red:var(--destructive);--amb:#f7a634;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--txt);font-family:var(--sans);min-height:100vh;font-size:14px;}
+.screen{display:none;}.screen.on{display:block;}
+
+/* HEADER */
+.hdr{background:var(--surf);border-bottom:1px solid var(--bdr);padding:12px 18px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:50;}
+.hdr h1{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--acc);}
+.role-tag{font-family:var(--mono);font-size:10px;padding:2px 8px;border-radius:3px;border:1px solid var(--bdr);color:var(--mut);}
+.name-chip{font-family:var(--mono);font-size:11px;color:var(--mut);}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--grn);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+.chg-btn{margin-left:auto;background:none;border:none;color:var(--mut);font-family:var(--mono);font-size:10px;cursor:pointer;text-decoration:underline;}
+.save-indicator{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;color:var(--mut);transition:opacity .3s;}
+.save-dot{width:5px;height:5px;border-radius:50%;background:var(--amb);animation:pulse 1s infinite;}
+.save-dot.saved{background:var(--grn);animation:none;}
+
+/* ROLE SELECT */
+.role-wrap{max-width:460px;margin:50px auto;padding:0 20px;}
+.role-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.rcard{background:var(--surf);border:1px solid var(--bdr);border-radius:8px;padding:16px 13px;cursor:pointer;transition:all .15s;text-align:center;}
+.rcard:hover{border-color:var(--acc);}
+.rcard .icon{font-size:20px;margin-bottom:7px;}
+.rcard .rn{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--txt);}
+.rcard .rmb{font-family:var(--mono);font-size:9px;color:var(--acc);margin-top:3px;}
+.rcard .rd{font-size:10px;color:var(--mut);margin-top:3px;}
+.rcard .rjoined{font-family:var(--mono);font-size:10px;color:var(--grn);margin-top:5px;}
+.rcard.dashboard{grid-column:1/-1;background:rgba(100,74,64,.06);border-color:rgba(100,74,64,.2);}
+
+/* NAME ENTRY */
+.name-wrap{max-width:380px;margin:70px auto;padding:0 22px;}
+.name-wrap h2{font-family:var(--mono);font-size:19px;font-weight:600;color:var(--acc);margin-bottom:5px;}
+.ntbadge{display:inline-flex;align-items:center;gap:7px;background:var(--surf);border:1px solid var(--bdr);border-radius:4px;padding:6px 12px;margin-bottom:18px;}
+.ntdot{width:8px;height:8px;border-radius:50%;}
+.ntlabel{font-family:var(--mono);font-size:12px;font-weight:600;}
+.big-in{width:100%;padding:12px 15px;font-size:15px;border-radius:6px;background:var(--bg);border:1.5px solid var(--bdr);color:var(--txt);font-family:var(--sans);outline:none;transition:border-color .15s;margin-bottom:11px;}
+.big-in:focus{border-color:var(--acc);}
+.btn-xl{width:100%;padding:12px;font-size:13px;border-radius:6px;font-family:var(--mono);cursor:pointer;font-weight:600;background:var(--acc);color:var(--primary-foreground);border:none;}
+.btn-xl:hover{filter:brightness(1.1);}
+
+/* CONFIG SCREEN */
+.cfg-wrap{max-width:480px;margin:50px auto;padding:0 22px;}
+.cfg-step{background:var(--surf);border:1px solid var(--bdr);border-radius:6px;padding:14px 16px;margin-bottom:10px;}
+.cfg-step-num{font-family:var(--mono);font-size:10px;color:var(--acc);letter-spacing:.08em;margin-bottom:6px;text-transform:uppercase;}
+.cfg-step p{font-size:12px;color:var(--mut);margin-bottom:8px;line-height:1.7;}
+.cfg-step code{font-family:var(--mono);font-size:11px;background:var(--surf2);padding:2px 6px;border-radius:3px;color:var(--txt);}
+.url-in{width:100%;padding:9px 12px;font-size:12px;border-radius:5px;background:var(--bg);border:1px solid var(--bdr);color:var(--txt);font-family:var(--mono);outline:none;margin-bottom:8px;}
+.url-in:focus{border-color:var(--acc);}
+.cfg-prog{margin-top:10px;font-family:var(--mono);font-size:11px;color:var(--mut);}
+.cfg-prog-bar{height:3px;background:var(--bdr);border-radius:2px;margin-top:6px;overflow:hidden;}
+.cfg-prog-fill{height:100%;background:var(--grn);border-radius:2px;transition:width .3s;}
+
+/* SHARED */
+.btn{padding:7px 13px;border-radius:4px;border:none;font-family:var(--mono);font-size:11px;cursor:pointer;transition:all .15s;font-weight:500;}
+.btn-p{background:var(--acc);color:var(--primary-foreground);}
+.btn-p:hover{filter:brightness(1.1);}
+.btn-g{background:transparent;border:1px solid var(--bdr);color:var(--mut);}
+.btn-g:hover{border-color:var(--txt);color:var(--txt);}
+.btn-d{background:transparent;border:1px solid var(--red);color:var(--red);}
+.btn-d:hover{background:var(--red);color:#fff;}
+.btn-sm{padding:4px 9px;font-size:11px;}
+.sec-ttl{font-family:var(--mono);font-size:10px;color:var(--mut);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:8px;}
+.sec-ttl::after{content:'';flex:1;height:1px;background:var(--bdr);}
+
+/* TABLE */
+.tbl-wrap{overflow-x:auto;border:1px solid var(--bdr);border-radius:6px;}
+table{width:100%;border-collapse:collapse;}
+th{background:var(--surf2);font-family:var(--mono);font-size:10px;color:var(--mut);letter-spacing:.07em;text-transform:uppercase;padding:8px 11px;text-align:left;border-bottom:1px solid var(--bdr);white-space:nowrap;}
+td{padding:8px 11px;border-bottom:1px solid var(--bdr);font-family:var(--mono);font-size:12px;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:var(--surf2);}
+td.r{text-align:right;}
+tr.brow td{background:var(--surf2)!important;font-size:10px;color:var(--mut);padding:4px 11px;letter-spacing:.07em;text-transform:uppercase;}
+
+/* BADGES */
+.badge{display:inline-flex;align-items:center;padding:2px 7px;border-radius:3px;font-size:10px;font-family:var(--mono);font-weight:600;white-space:nowrap;}
+.b-ok{background:rgba(45,122,79,.12);color:var(--grn);}
+.b-mm{background:rgba(229,77,46,.12);color:var(--red);}
+.b-pend{background:rgba(100,74,64,.08);color:var(--mut);}
+.b-part{background:rgba(184,107,0,.12);color:var(--amb);}
+.b-vrfy{background:rgba(100,74,64,.1);color:var(--acc);}
+
+/* STATS */
+.stats{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;}
+.sc{background:var(--surf);border:1px solid var(--bdr);border-radius:6px;padding:11px 15px;min-width:90px;}
+.sc .v{font-family:var(--mono);font-size:21px;font-weight:600;line-height:1;margin-bottom:2px;}
+.sc .l{font-size:10px;color:var(--mut);font-family:var(--mono);}
+.vc{color:var(--acc);}.gc{color:var(--grn);}.rc{color:var(--red);}.ac{color:var(--amb);}
+
+/* TEAM LAYOUT */
+.team-layout{display:flex;gap:14px;padding:14px 16px;max-width:980px;margin:0 auto;}
+.team-main{flex:1;min-width:0;}
+.team-sidebar{width:260px;flex-shrink:0;}
+@media(max-width:700px){.team-layout{flex-direction:column;}.team-sidebar{width:100%;}}
+
+/* BRAND ACCORDION */
+.brand-section{background:var(--surf);border:1px solid var(--bdr);border-radius:6px;margin-bottom:7px;overflow:hidden;transition:border-color .2s;}
+.brand-section.is-submitted{border-color:rgba(45,122,79,.4);}
+.brand-section.is-open{border-color:rgba(255,224,194,.45);}
+.brand-section.is-verify{border-left:3px solid rgba(255,224,194,.4);}
+.brand-toggle{width:100%;background:none;border:none;padding:11px 14px;display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--txt);text-align:left;}
+.brand-toggle:hover{background:var(--surf2);}
+.bt-name{font-family:var(--mono);font-size:12px;font-weight:600;flex:1;}
+.bt-cnt{font-family:var(--mono);font-size:10px;color:var(--mut);}
+.bt-ch{font-size:9px;color:var(--mut);transition:transform .2s;}
+.brand-section.is-open .bt-ch{transform:rotate(90deg);}
+.brand-body{display:none;border-top:1px solid var(--bdr);}
+.brand-section.is-open .brand-body{display:block;}
+.prod-row{padding:9px 14px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:10px;}
+.prod-row:last-of-type{border-bottom:none;}
+.prod-info{flex:1;min-width:0;}
+.pname{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.pmeta{font-family:var(--mono);font-size:10px;color:var(--mut);margin-top:2px;display:flex;gap:8px;}
+.ts-chip{color:var(--grn);}
+.cnt-in{width:75px;font-size:14px;text-align:center;padding:6px 5px;border-radius:4px;background:var(--bg);border:1px solid var(--bdr);color:var(--txt);font-family:var(--mono);outline:none;-moz-appearance:textfield;}
+.cnt-in::-webkit-outer-spin-button,.cnt-in::-webkit-inner-spin-button{-webkit-appearance:none;}
+.cnt-in:focus{border-color:var(--acc);}
+.cnt-in:disabled{background:var(--surf2);cursor:not-allowed;color:var(--mut);}
+.brand-footer{padding:9px 14px;background:var(--surf2);display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
+.bmeta{font-family:var(--mono);font-size:10px;color:var(--mut);}
+.bsub-meta{font-family:var(--mono);font-size:10px;color:var(--grn);}
+.pdots{display:flex;gap:3px;flex-wrap:wrap;max-width:120px;}
+.pdot{width:5px;height:5px;border-radius:50%;background:var(--bdr);}
+.pdot.f{background:var(--grn);}
+.section-lbl{font-family:var(--mono);font-size:9px;color:var(--mut);letter-spacing:.1em;text-transform:uppercase;padding:8px 2px 5px;display:flex;align-items:center;gap:6px;margin-top:4px;}
+.section-lbl::before,.section-lbl::after{content:'';height:1px;background:var(--bdr);flex:1;}
+
+/* ACTIVITY SIDEBAR */
+.sidebar-card{background:var(--surf);border:1px solid var(--bdr);border-radius:6px;overflow:hidden;position:sticky;top:60px;}
+.sidebar-hdr{padding:10px 13px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between;}
+.sidebar-hdr-title{font-family:var(--mono);font-size:10px;color:var(--mut);letter-spacing:.08em;text-transform:uppercase;}
+.sidebar-hdr-count{font-family:var(--mono);font-size:10px;color:var(--acc);}
+.activity-list{max-height:calc(100vh - 180px);overflow-y:auto;}
+.act-item{padding:9px 13px;border-bottom:1px solid var(--bdr);}
+.act-item:last-child{border-bottom:none;}
+.act-item:hover{background:var(--surf2);}
+.act-pname{font-family:var(--mono);font-size:11px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px;}
+.act-row{display:flex;align-items:center;gap:6px;}
+.act-brand{font-family:var(--mono);font-size:9px;color:var(--mut);}
+.act-qty{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--acc);margin-left:auto;}
+.act-ts{font-family:var(--mono);font-size:9px;color:var(--mut);}
+.act-empty{padding:24px 13px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--mut);}
+.search-wrap{padding:0 0 10px;}
+.search-in{width:100%;padding:8px 13px;font-size:12px;border-radius:5px;background:var(--bg);border:1px solid var(--bdr);color:var(--txt);font-family:var(--mono);outline:none;}
+.search-in:focus{border-color:var(--acc);}
+
+/* DASHBOARD */
+.dash-wrap{padding:18px;max-width:1200px;}
+.live-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(45,122,79,.1);border:1px solid rgba(45,122,79,.22);border-radius:3px;padding:2px 8px;font-family:var(--mono);font-size:10px;color:var(--grn);}
+.bsg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:9px;margin-bottom:16px;}
+.bsg-card{background:var(--surf);border:1px solid var(--bdr);border-radius:6px;padding:11px 13px;}
+.bsg-card.verified{border-color:rgba(45,122,79,.35);}
+.bsg-card.mismatch{border-color:rgba(229,77,46,.3);}
+.bsg-card.partial{border-color:rgba(184,107,0,.25);}
+.bsg-name{font-family:var(--mono);font-size:11px;font-weight:600;margin-bottom:7px;}
+.bsg-tr{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;margin-bottom:3px;}
+.tdot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.bsg-ts{color:var(--mut);margin-left:auto;}
+.alert{padding:9px 13px;border-radius:5px;font-size:11px;margin-bottom:12px;font-family:var(--mono);}
+.alert-w{background:rgba(184,107,0,.08);border:1px solid rgba(184,107,0,.22);color:var(--amb);}
+.alert-g{background:rgba(45,122,79,.07);border:1px solid rgba(45,122,79,.2);color:var(--grn);}
+.alert-i{background:rgba(100,74,64,.07);border:1px solid rgba(100,74,64,.18);color:var(--acc);}
+.empty{text-align:center;padding:32px;color:var(--mut);font-family:var(--mono);font-size:11px;}
+.spin{display:inline-block;width:12px;height:12px;border:2px solid var(--bdr);border-top-color:var(--acc);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+</style>
+</head>
+<body>
+
+<!-- CONFIG -->
+<div class="screen on" id="s-config">
+  <div class="cfg-wrap">
+    <div style="font-family:var(--mono);font-size:20px;font-weight:600;color:var(--acc);margin-bottom:4px;">STOCK·VERIFY</div>
+    <p style="color:var(--mut);font-size:11px;font-family:var(--mono);margin-bottom:20px;">One-time setup — ~5 minutes</p>
+    <div class="cfg-step">
+      <div class="cfg-step-num">Step 1 — Create Google Sheet</div>
+      <p><a href="https://sheets.google.com" target="_blank" style="color:var(--acc)">sheets.google.com</a> → New blank sheet → name it <code>StockVerify</code></p>
+    </div>
+    <div class="cfg-step">
+      <div class="cfg-step-num">Step 2 — Add the backend</div>
+      <p><code>Extensions → Apps Script</code> → delete existing code → paste the full contents of <code>gas-backend.js</code> → Save</p>
+    </div>
+    <div class="cfg-step">
+      <div class="cfg-step-num">Step 3 — Deploy</div>
+      <p><code>Deploy → New deployment → Web app</code><br>
+      Execute as: <code>Me</code> &nbsp;|&nbsp; Who has access: <code>Anyone</code><br>
+      → Deploy → Authorize → copy the Web App URL</p>
+    </div>
+    <div class="cfg-step">
+      <div class="cfg-step-num">Step 4 — Connect</div>
+      <p>Paste the Web App URL below. This seeds all 1,643 products into the Sheet automatically.</p>
+      <input class="url-in" id="gas-url-in" placeholder="https://script.google.com/macros/s/...">
+      <button class="btn btn-p" style="width:100%;padding:10px;font-size:12px" onclick="saveGasUrl()" id="connect-btn">Connect & Seed Products →</button>
+      <div class="cfg-prog" id="cfg-prog" style="display:none">
+        <span id="cfg-prog-txt">Seeding products…</span>
+        <div class="cfg-prog-bar"><div class="cfg-prog-fill" id="cfg-prog-fill" style="width:0%"></div></div>
+      </div>
+      <div id="cfg-err" style="color:var(--red);font-family:var(--mono);font-size:11px;margin-top:8px;display:none"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ROLE SELECT -->
+<div class="screen" id="s-role">
+  <div class="role-wrap">
+    <div style="margin-bottom:22px;">
+      <div style="font-family:var(--mono);font-size:20px;font-weight:600;color:var(--acc);margin-bottom:3px;">STOCK·VERIFY</div>
+      <div style="color:var(--mut);font-size:11px;font-family:var(--mono);">Multispan Controls — Stock Audit</div>
+    </div>
+    <div class="role-grid">
+      <div class="rcard" onclick="pickTeam('t1')">
+        <div class="icon">📋</div><div class="rn">Team 1</div>
+        <div class="rmb">Thejashwini · Raghu</div>
+        <div class="rd">UNISON · RENU</div>
+        <div class="rjoined" id="rn-t1" style="display:none"></div>
+      </div>
+      <div class="rcard" onclick="pickTeam('t2')">
+        <div class="icon">📋</div><div class="rn">Team 2</div>
+        <div class="rmb">Sushma · Soumya</div>
+        <div class="rd">ESBEE · SBEE</div>
+        <div class="rjoined" id="rn-t2" style="display:none"></div>
+      </div>
+      <div class="rcard" onclick="pickTeam('t3')">
+        <div class="icon">📋</div><div class="rn">Team 3</div>
+        <div class="rmb">Sandhya · Rithwik</div>
+        <div class="rd">MISC · RL · OMRON · AGILITY · LEUZE</div>
+        <div class="rjoined" id="rn-t3" style="display:none"></div>
+      </div>
+      <div class="rcard" onclick="pickTeam('t4')">
+        <div class="icon">📋</div><div class="rn">Team 4</div>
+        <div class="rmb">Pooja · Prathap</div>
+        <div class="rd">SCHMERSAL</div>
+        <div class="rjoined" id="rn-t4" style="display:none"></div>
+      </div>
+      <div class="rcard" onclick="pickTeam('t5')">
+        <div class="icon">📋</div><div class="rn">Team 5</div>
+        <div class="rmb">Iniyavan · Badal · Annada</div>
+        <div class="rd">MULTISPAN</div>
+        <div class="rjoined" id="rn-t5" style="display:none"></div>
+      </div>
+      <div class="rcard dashboard" onclick="setRole('dashboard')">
+        <div class="icon">📊</div><div class="rn">Dashboard</div>
+        <div class="rd">Surendra · Achyut · Girish · Export</div>
+      </div>
+    </div>
+    <div style="margin-top:12px;text-align:center;">
+      <button class="btn btn-g btn-sm" onclick="resetConfig()">⚙ Change Sheet URL</button>
+    </div>
+  </div>
+</div>
+
+<!-- NAME ENTRY -->
+<div class="screen" id="s-name">
+  <div class="hdr"><h1>STOCK·VERIFY</h1>
+    <span class="role-tag" id="name-role-tag">TEAM 1</span>
+    <button class="chg-btn" onclick="setRole(null)">← back</button>
+  </div>
+  <div class="name-wrap">
+    <div class="ntbadge" id="name-badge">
+      <span class="ntdot" id="name-dot"></span>
+      <span class="ntlabel" id="name-badge-label">Team 1</span>
+    </div>
+    <h2>Enter Your Name</h2>
+    <p style="color:var(--mut);font-size:11px;font-family:var(--mono);margin-bottom:18px;">Your name appears in the Sheet against every count you enter</p>
+    <input class="big-in" id="name-input" placeholder="Your full name" maxlength="50"
+      onkeydown="if(event.key==='Enter')confirmName()">
+    <button class="btn-xl" onclick="confirmName()">Start Counting →</button>
+    <div id="name-err" style="color:var(--red);font-family:var(--mono);font-size:11px;margin-top:8px;display:none"></div>
+  </div>
+</div>
+
+<!-- TEAM ENTRY -->
+<div class="screen" id="s-team">
+  <div class="hdr"><h1>STOCK·VERIFY</h1>
+    <span class="role-tag" id="team-role-tag">TEAM 1</span>
+    <span class="name-chip" id="team-name-chip"></span>
+    <span class="save-indicator" id="save-ind" style="opacity:0">
+      <span class="save-dot" id="save-dot"></span><span id="save-txt">saving</span>
+    </span>
+    <button class="chg-btn" onclick="setRole(null)">change role</button>
+  </div>
+  <div class="team-layout">
+    <div class="team-main">
+      <div class="search-wrap">
+        <input class="search-in" id="search-in" placeholder="Search products…" oninput="onSearch(this.value)">
+      </div>
+      <div id="team-brand-list"></div>
+    </div>
+    <div class="team-sidebar">
+      <div class="sidebar-card">
+        <div class="sidebar-hdr">
+          <span class="sidebar-hdr-title">Recent Activity</span>
+          <span class="sidebar-hdr-count" id="act-count">—</span>
+        </div>
+        <div class="activity-list" id="activity-list">
+          <div class="act-empty"><span class="spin"></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div class="screen" id="s-dash">
+  <div class="hdr"><h1>STOCK·VERIFY</h1>
+    <span class="role-tag">DASHBOARD</span>
+    <span class="live-dot"></span>
+    <button class="chg-btn" onclick="setRole(null)">change role</button>
+  </div>
+  <div class="dash-wrap">
+    <div style="display:flex;align-items:center;gap:11px;margin-bottom:16px;flex-wrap:wrap;">
+      <span class="live-badge"><span style="width:6px;height:6px;border-radius:50%;background:var(--grn);display:inline-block"></span>LIVE</span>
+      <span style="font-family:var(--mono);font-size:11px;color:var(--mut)" id="last-refresh">—</span>
+      <div style="margin-left:auto;display:flex;gap:9px;">
+        <button class="btn btn-g" onclick="refreshDash()">↻ Refresh</button>
+        <button class="btn btn-p" onclick="exportExcel()">⬇ Export Excel</button>
+      </div>
+    </div>
+    <div class="stats" id="dash-stats"></div>
+    <div id="dash-alert"></div>
+    <div id="dash-brand-status"></div>
+    <div id="dash-final"></div>
+  </div>
+</div>
+
+<script>
+const PRODUCT_DB = [{"id":"p0001","brand":"AGILITY","name":"A7-MP1-100","sku":"","sysQty":0},{"id":"p0002","brand":"AGILITY","name":"A7-MP1-250","sku":"","sysQty":0},{"id":"p0003","brand":"AGILITY","name":"A7-V1-DS-G-T","sku":"","sysQty":0},{"id":"p0004","brand":"AGILITY","name":"A7-V1-DS-O-T","sku":"","sysQty":0},{"id":"p0005","brand":"AGILITY","name":"A7-V1-DS-W-T","sku":"","sysQty":0},{"id":"p0006","brand":"AGILITY","name":"AE-01-024D-1-B","sku":"","sysQty":0},{"id":"p0007","brand":"AGILITY","name":"AE-02-024D-1-B-C","sku":"","sysQty":0},{"id":"p0008","brand":"AGILITY","name":"AE-02-024D-2-B-C","sku":"","sysQty":0},{"id":"p0009","brand":"AGILITY","name":"AE-04-012D-1-B-C (G2R) 11100018","sku":"","sysQty":0},{"id":"p0010","brand":"AGILITY","name":"AE-04-024D-1-B-C (11100195)","sku":"","sysQty":0},{"id":"p0011","brand":"AGILITY","name":"AE-04-024D-1-B-C-BK (11100848)","sku":"","sysQty":0},{"id":"p0012","brand":"AGILITY","name":"AE-04-024D-2-B-C (11100214)","sku":"","sysQty":0},{"id":"p0013","brand":"AGILITY","name":"AE-08-024D-1-B-C (11100194)","sku":"","sysQty":0},{"id":"p0014","brand":"AGILITY","name":"AE-08-024D-1-B-C/G5Q (11100586)","sku":"","sysQty":0},{"id":"p0015","brand":"AGILITY","name":"AE-08-024D-1-B-C-BK","sku":"","sysQty":0},{"id":"p0016","brand":"AGILITY","name":"AE-08-024D-1-FFI-B-C","sku":"","sysQty":0},{"id":"p0017","brand":"AGILITY","name":"AE-08-024D-2-BC (11100202)","sku":"","sysQty":0},{"id":"p0018","brand":"AGILITY","name":"AE-08-230A-1B","sku":"","sysQty":0},{"id":"p0019","brand":"AGILITY","name":"AE-08-230A-2-B-C","sku":"","sysQty":0},{"id":"p0020","brand":"AGILITY","name":"AE-16-024D-1-B-C (11100193)","sku":"","sysQty":0},{"id":"p0021","brand":"AGILITY","name":"AE-16-230A-1-B-C","sku":"","sysQty":0},{"id":"p0022","brand":"AGILITY","name":"AE-PM-IDC-F20","sku":"","sysQty":0},{"id":"p0023","brand":"AGILITY","name":"AE-PM-IDC-F34","sku":"","sysQty":0},{"id":"p0024","brand":"AGILITY","name":"AE-S-08-024D-024D-B-C (A5)","sku":"","sysQty":0},{"id":"p0025","brand":"AGILITY","name":"AE-S-08-024D-230A-B-C","sku":"","sysQty":0},{"id":"p0026","brand":"AGILITY","name":"AE-S-16-024D-1-FFI-B-S-CNC","sku":"","sysQty":0},{"id":"p0027","brand":"LEUZE","name":"DCR55M2/R2","sku":"","sysQty":0},{"id":"p0028","brand":"OMRON","name":"E2B-M18KS08-WP-B1","sku":"","sysQty":0},{"id":"p0029","brand":"LEUZE","name":"EC D08-32-D08-A (50141937)","sku":"","sysQty":0},{"id":"p0030","brand":"LEUZE","name":"EC D10-32-D10-A (50141940)","sku":"","sysQty":0},{"id":"p0031","brand":"LEUZE","name":"EI 1058 S08X20C-0500H-020A","sku":"","sysQty":0},{"id":"p0032","brand":"OMRON","name":"F39-JD7A-D","sku":"","sysQty":0},{"id":"p0033","brand":"OMRON","name":"G2R-2-SN AC 230","sku":"","sysQty":0},{"id":"p0034","brand":"OMRON","name":"G2R-2-SN DC 24","sku":"","sysQty":0},{"id":"p0035","brand":"LEUZE","name":"HT5.1/2 50129399","sku":"","sysQty":0},{"id":"p0036","brand":"LEUZE","name":"IS 108 MM/4NC-2E0-M8.3","sku":"","sysQty":0},{"id":"p0037","brand":"LEUZE","name":"IS C08MM/4NO-2E0","sku":"","sysQty":0},{"id":"p0038","brand":"LEUZE","name":"IS C22PP/2NC-5E0","sku":"","sysQty":0},{"id":"p0039","brand":"LEUZE","name":"IS C22PP/2NO-5E0","sku":"","sysQty":0},{"id":"p0040","brand":"LEUZE","name":"KD 095-4A","sku":"","sysQty":0},{"id":"p0041","brand":"LEUZE","name":"K-D M8W-4P-10m-FAB","sku":"","sysQty":0},{"id":"p0042","brand":"LEUZE","name":"KD U-M12-5A-V1-050","sku":"","sysQty":0},{"id":"p0043","brand":"LEUZE","name":"KD U-M8-4A-V1-020","sku":"","sysQty":0},{"id":"p0044","brand":"LEUZE","name":"KFX-ET-620","sku":"","sysQty":0},{"id":"p0045","brand":"LEUZE","name":"KRT18BM.V3/G6X-M12","sku":"","sysQty":0},{"id":"p0046","brand":"LEUZE","name":"LSL 01 01 R","sku":"","sysQty":0},{"id":"p0047","brand":"LEUZE","name":"LSL 01 01 R A G B W PLE","sku":"","sysQty":0},{"id":"p0048","brand":"LEUZE","name":"LSL 03 01 RAGPB","sku":"","sysQty":0},{"id":"p0049","brand":"OMRON","name":"MY2N-GS  AC220/240","sku":"","sysQty":0},{"id":"p0050","brand":"OMRON","name":"MY2N-GS  DC24","sku":"","sysQty":0},{"id":"p0051","brand":"OMRON","name":"MY2N-GS AC100/110","sku":"","sysQty":0},{"id":"p0052","brand":"OMRON","name":"MY4N-GS  DC24","sku":"","sysQty":0},{"id":"p0053","brand":"OMRON","name":"MY4N-GS AC220/240","sku":"","sysQty":0},{"id":"p0054","brand":"OMRON","name":"MY4N-GS-AC 100/110","sku":"","sysQty":0},{"id":"p0055","brand":"OMRON","name":"Omron:PYF14A-N","sku":"","sysQty":0},{"id":"p0056","brand":"OMRON","name":"Omron:S8FS-C35024J","sku":"","sysQty":0},{"id":"p0057","brand":"OMRON","name":"P2RF-08-E","sku":"","sysQty":0},{"id":"p0058","brand":"OMRON","name":"P2RFZ-08-E","sku":"","sysQty":0},{"id":"p0059","brand":"OMRON","name":"PYC-A1","sku":"","sysQty":0},{"id":"p0060","brand":"OMRON","name":"PYF08A-N","sku":"","sysQty":0},{"id":"p0061","brand":"OMRON","name":"PYF14A-N","sku":"","sysQty":0},{"id":"p0062","brand":"OMRON","name":"S82Y-FSC050D IN","sku":"","sysQty":0},{"id":"p0063","brand":"OMRON","name":"S82Y-FSC150D IN","sku":"","sysQty":0},{"id":"p0064","brand":"OMRON","name":"S82Y-FSC350D IN","sku":"","sysQty":0},{"id":"p0065","brand":"OMRON","name":"S8FS-C05024","sku":"","sysQty":0},{"id":"p0066","brand":"OMRON","name":"S8FS-C10024J","sku":"","sysQty":0},{"id":"p0067","brand":"OMRON","name":"S8FS-C15024J","sku":"","sysQty":0},{"id":"p0068","brand":"OMRON","name":"S8FS-C35024","sku":"","sysQty":0},{"id":"p0069","brand":"OMRON","name":"S8VK-C06024","sku":"","sysQty":0},{"id":"p0070","brand":"OMRON","name":"S8VK-C12024","sku":"","sysQty":0},{"id":"p0071","brand":"OMRON","name":"S8VK-C24024","sku":"","sysQty":0},{"id":"p0072","brand":"OMRON","name":"S8VK-C48024","sku":"","sysQty":0},{"id":"p0073","brand":"SBEE","name":"AP03FD2R024D012","sku":"","sysQty":0},{"id":"p0074","brand":"ESBEE","name":"EC1C","sku":"","sysQty":0},{"id":"p0075","brand":"ESBEE","name":"EC2C","sku":"","sysQty":0},{"id":"p0076","brand":"ESBEE","name":"EE09AH5R00","sku":"","sysQty":0},{"id":"p0077","brand":"ESBEE","name":"EE3RMH1","sku":"","sysQty":0},{"id":"p0078","brand":"ESBEE","name":"EG02MG0R","sku":"","sysQty":0},{"id":"p0079","brand":"ESBEE","name":"EG02TD0I","sku":"","sysQty":0},{"id":"p0080","brand":"ESBEE","name":"EG03FDLA024C","sku":"","sysQty":0},{"id":"p0081","brand":"ESBEE","name":"EG03FDLA240A","sku":"","sysQty":0},{"id":"p0082","brand":"ESBEE","name":"EG03FDLB024C","sku":"","sysQty":0},{"id":"p0083","brand":"ESBEE","name":"EG03FDLB240A","sku":"","sysQty":0},{"id":"p0084","brand":"ESBEE","name":"EG03FDLG024C","sku":"","sysQty":0},{"id":"p0085","brand":"ESBEE","name":"EG03FDLG240A","sku":"","sysQty":0},{"id":"p0086","brand":"ESBEE","name":"EG03FDLR024C","sku":"","sysQty":0},{"id":"p0087","brand":"ESBEE","name":"EG03FDLR240A","sku":"","sysQty":0},{"id":"p0088","brand":"ESBEE","name":"EG03FDLY024C","sku":"","sysQty":0},{"id":"p0089","brand":"ESBEE","name":"EG03FDLY240A","sku":"","sysQty":0},{"id":"p0090","brand":"ESBEE","name":"EG03SKLG024C","sku":"","sysQty":0},{"id":"p0091","brand":"ESBEE","name":"EG03SKLG240A","sku":"","sysQty":0},{"id":"p0092","brand":"ESBEE","name":"EG03SKLR024C","sku":"","sysQty":0},{"id":"p0093","brand":"ESBEE","name":"EG03SKLR240A","sku":"","sysQty":0},{"id":"p0094","brand":"ESBEE","name":"EG03SKLY240A","sku":"","sysQty":0},{"id":"p0095","brand":"ESBEE","name":"EG03SLLG024C","sku":"","sysQty":0},{"id":"p0096","brand":"ESBEE","name":"EG03SLLG240A","sku":"","sysQty":0},{"id":"p0097","brand":"ESBEE","name":"EG03SLLR024C","sku":"","sysQty":0},{"id":"p0098","brand":"ESBEE","name":"EG03SLLR240A","sku":"","sysQty":0},{"id":"p0099","brand":"ESBEE","name":"EG03SRLG024C","sku":"","sysQty":0},{"id":"p0100","brand":"ESBEE","name":"EG15R00C024C","sku":"","sysQty":0},{"id":"p0101","brand":"ESBEE","name":"EG15R00C240A","sku":"","sysQty":0},{"id":"p0102","brand":"ESBEE","name":"EILA024C","sku":"","sysQty":0},{"id":"p0103","brand":"ESBEE","name":"EILB240A","sku":"","sysQty":0},{"id":"p0104","brand":"ESBEE","name":"EILG024C","sku":"","sysQty":0},{"id":"p0105","brand":"ESBEE","name":"EILR024C","sku":"","sysQty":0},{"id":"p0106","brand":"ESBEE","name":"EILW024C","sku":"","sysQty":0},{"id":"p0107","brand":"ESBEE","name":"EILY024C","sku":"","sysQty":0},{"id":"p0108","brand":"ESBEE","name":"EILY240A","sku":"","sysQty":0},{"id":"p0109","brand":"ESBEE","name":"EMNAFD1","sku":"","sysQty":0},{"id":"p0110","brand":"ESBEE","name":"EMNBFD1","sku":"","sysQty":0},{"id":"p0111","brand":"ESBEE","name":"EMNCFD1","sku":"","sysQty":0},{"id":"p0112","brand":"ESBEE","name":"EMNCKK1","sku":"","sysQty":0},{"id":"p0113","brand":"ESBEE","name":"EMNCKL1","sku":"","sysQty":0},{"id":"p0114","brand":"ESBEE","name":"EMNCMD1","sku":"","sysQty":0},{"id":"p0115","brand":"ESBEE","name":"EMNCSJ1","sku":"","sysQty":0},{"id":"p0116","brand":"ESBEE","name":"EMNCSK1","sku":"","sysQty":0},{"id":"p0117","brand":"ESBEE","name":"EMNCSL1","sku":"","sysQty":0},{"id":"p0118","brand":"ESBEE","name":"EMNCSM1","sku":"","sysQty":0},{"id":"p0119","brand":"ESBEE","name":"EMNCSR1","sku":"","sysQty":0},{"id":"p0120","brand":"ESBEE","name":"EMNGFD1","sku":"","sysQty":0},{"id":"p0121","brand":"ESBEE","name":"EMNGMD1","sku":"","sysQty":0},{"id":"p0122","brand":"ESBEE","name":"EMNGSK1","sku":"","sysQty":0},{"id":"p0123","brand":"ESBEE","name":"EMNGSR1","sku":"","sysQty":0},{"id":"p0124","brand":"ESBEE","name":"EMNRFD1","sku":"","sysQty":0},{"id":"p0125","brand":"ESBEE","name":"EMNRMD1","sku":"","sysQty":0},{"id":"p0126","brand":"ESBEE","name":"EMNRMH1","sku":"","sysQty":0},{"id":"p0127","brand":"ESBEE","name":"EMNRSK1","sku":"","sysQty":0},{"id":"p0128","brand":"ESBEE","name":"EMNRSL1","sku":"","sysQty":0},{"id":"p0129","brand":"ESBEE","name":"EMNYFD1","sku":"","sysQty":0},{"id":"p0130","brand":"ESBEE","name":"EMNYMD1","sku":"","sysQty":0},{"id":"p0131","brand":"ESBEE","name":"EPLA024C","sku":"","sysQty":0},{"id":"p0132","brand":"ESBEE","name":"EPLA240A","sku":"","sysQty":0},{"id":"p0133","brand":"ESBEE","name":"EPLB024C","sku":"","sysQty":0},{"id":"p0134","brand":"ESBEE","name":"EPLB240A","sku":"","sysQty":0},{"id":"p0135","brand":"ESBEE","name":"EPLG024C","sku":"","sysQty":0},{"id":"p0136","brand":"ESBEE","name":"EPLG240A","sku":"","sysQty":0},{"id":"p0137","brand":"ESBEE","name":"EPLR024C","sku":"","sysQty":0},{"id":"p0138","brand":"ESBEE","name":"EPLR110A","sku":"","sysQty":0},{"id":"p0139","brand":"ESBEE","name":"EPLR240A","sku":"","sysQty":0},{"id":"p0140","brand":"ESBEE","name":"EPLW024C","sku":"","sysQty":0},{"id":"p0141","brand":"ESBEE","name":"EPLW110A","sku":"","sysQty":0},{"id":"p0142","brand":"ESBEE","name":"EPLW240A","sku":"","sysQty":0},{"id":"p0143","brand":"ESBEE","name":"EPLY024C","sku":"","sysQty":0},{"id":"p0144","brand":"ESBEE","name":"EPLY240A","sku":"","sysQty":0},{"id":"p0145","brand":"ESBEE","name":"ES122012A","sku":"","sysQty":0},{"id":"p0146","brand":"ESBEE","name":"ES5001","sku":"","sysQty":0},{"id":"p0147","brand":"ESBEE","name":"ES5002","sku":"","sysQty":0},{"id":"p0148","brand":"ESBEE","name":"ES50LA1U","sku":"","sysQty":0},{"id":"p0149","brand":"ESBEE","name":"ES50LA1X","sku":"","sysQty":0},{"id":"p0150","brand":"ESBEE","name":"ES50LB1U","sku":"","sysQty":0},{"id":"p0151","brand":"ESBEE","name":"ES50LB1X","sku":"","sysQty":0},{"id":"p0152","brand":"ESBEE","name":"ES50LG1U","sku":"","sysQty":0},{"id":"p0153","brand":"ESBEE","name":"ES50LG1X","sku":"","sysQty":0},{"id":"p0154","brand":"ESBEE","name":"ES50LR1U","sku":"","sysQty":0},{"id":"p0155","brand":"ESBEE","name":"ES50LR1X","sku":"","sysQty":0},{"id":"p0156","brand":"ESBEE","name":"ES50LR2U","sku":"","sysQty":0},{"id":"p0157","brand":"ESBEE","name":"ES50LR3X","sku":"","sysQty":0},{"id":"p0158","brand":"ESBEE","name":"ES50Z1U","sku":"","sysQty":0},{"id":"p0159","brand":"ESBEE","name":"ES50Z1X","sku":"","sysQty":0},{"id":"p0160","brand":"ESBEE","name":"EWS1C01AA","sku":"","sysQty":0},{"id":"p0161","brand":"ESBEE","name":"EWS2C01AA","sku":"","sysQty":0},{"id":"p0162","brand":"ESBEE","name":"EWS3C01AA","sku":"","sysQty":0},{"id":"p0163","brand":"SBEE","name":"HB135000","sku":"","sysQty":0},{"id":"p0164","brand":"SBEE","name":"HC61A2","sku":"","sysQty":0},{"id":"p0165","brand":"SBEE","name":"HC61B2","sku":"","sysQty":0},{"id":"p0166","brand":"SBEE","name":"HF192024A","sku":"","sysQty":0},{"id":"p0167","brand":"SBEE","name":"IA12M34R024D","sku":"","sysQty":0},{"id":"p0168","brand":"SBEE","name":"IA12M34R240A","sku":"","sysQty":0},{"id":"p0169","brand":"SBEE","name":"IC01F59C114A","sku":"","sysQty":0},{"id":"p0170","brand":"SBEE","name":"IC24A03W240A","sku":"","sysQty":0},{"id":"p0171","brand":"SBEE","name":"IC24A04W240A","sku":"","sysQty":0},{"id":"p0172","brand":"SBEE","name":"IT512WCW2MSC240A00","sku":"","sysQty":0},{"id":"p0173","brand":"SBEE","name":"IT516WCW4MGN240A0","sku":"","sysQty":0},{"id":"p0174","brand":"SBEE","name":"MLASS3A1","sku":"","sysQty":0},{"id":"p0175","brand":"SBEE","name":"MLASS3B2","sku":"","sysQty":0},{"id":"p0176","brand":"SBEE","name":"MLASS3C4","sku":"","sysQty":0},{"id":"p0177","brand":"SBEE","name":"MLPBS3C7","sku":"","sysQty":0},{"id":"p0178","brand":"SBEE","name":"MLPSS3A5","sku":"","sysQty":0},{"id":"p0179","brand":"SBEE","name":"MNPSS3100RD","sku":"","sysQty":0},{"id":"p0180","brand":"SBEE","name":"SILG024C","sku":"","sysQty":0},{"id":"p0181","brand":"SBEE","name":"SILR012C","sku":"","sysQty":0},{"id":"p0182","brand":"SBEE","name":"SLMBS3D3","sku":"","sysQty":0},{"id":"p0183","brand":"SBEE","name":"SLMBS3F6","sku":"","sysQty":0},{"id":"p0184","brand":"SBEE","name":"SLMPBS3D1","sku":"","sysQty":0},{"id":"p0185","brand":"SBEE","name":"SLMPBS3F5","sku":"","sysQty":0},{"id":"p0186","brand":"SBEE","name":"SLMPBS3M4","sku":"","sysQty":0},{"id":"p0187","brand":"SBEE","name":"SLMSBS3B4","sku":"","sysQty":0},{"id":"p0188","brand":"SBEE","name":"SLPBS3B4","sku":"","sysQty":0},{"id":"p0189","brand":"SBEE","name":"SLPBS3F5","sku":"","sysQty":0},{"id":"p0190","brand":"SBEE","name":"SLPSS3RM","sku":"","sysQty":0},{"id":"p0191","brand":"SBEE","name":"TW10UWDRGA10G","sku":"","sysQty":0},{"id":"p0192","brand":"SBEE","name":"TW10UWDRGYZ10G","sku":"","sysQty":0},{"id":"p0193","brand":"SBEE","name":"TW11UWDRGA10G","sku":"","sysQty":0},{"id":"p0194","brand":"SBEE","name":"TW1TR1","sku":"","sysQty":0},{"id":"p0195","brand":"SBEE","name":"TW1UR1A1G1","sku":"","sysQty":0},{"id":"p0196","brand":"SBEE","name":"TW1UR1A1G1Z1","sku":"","sysQty":0},{"id":"p0197","brand":"SBEE","name":"TW1UR1G1","sku":"","sysQty":0},{"id":"p0198","brand":"SBEE","name":"TW1XA1","sku":"","sysQty":0},{"id":"p0199","brand":"SBEE","name":"TW1XG1","sku":"","sysQty":0},{"id":"p0200","brand":"SBEE","name":"TW1XR1","sku":"","sysQty":0},{"id":"p0201","brand":"SBEE","name":"TW1XR1G1","sku":"","sysQty":0},{"id":"p0202","brand":"SBEE","name":"TW1XR1G1A1","sku":"","sysQty":0},{"id":"p0203","brand":"SBEE","name":"SLPSS3LP","sku":"","sysQty":0},{"id":"p0204","brand":"SBEE","name":"TW11UWDRGYZ10G","sku":"","sysQty":0},{"id":"p0205","brand":"SBEE","name":"TW1UR3Z1","sku":"","sysQty":0},{"id":"p0206","brand":"SBEE","name":"MLPBS3A3","sku":"","sysQty":0},{"id":"p0207","brand":"SBEE","name":"IC24A03W024D","sku":"","sysQty":0},{"id":"p0208","brand":"SBEE","name":"TW1UR1G1Z1","sku":"","sysQty":0},{"id":"p0209","brand":"ESBEE","name":"ES50LW1U","sku":"","sysQty":0},{"id":"p0210","brand":"ESBEE","name":"ES50LY1U","sku":"","sysQty":0},{"id":"p0211","brand":"SBEE","name":"TW1UR1A1","sku":"","sysQty":0},{"id":"p0212","brand":"SBEE","name":"SLMBS3B5","sku":"","sysQty":0},{"id":"p0213","brand":"SBEE","name":"SLMBS3M4","sku":"","sysQty":0},{"id":"p0214","brand":"SBEE","name":"BILR024D","sku":"","sysQty":0},{"id":"p0215","brand":"SBEE","name":"BILG024D","sku":"","sysQty":0},{"id":"p0216","brand":"SBEE","name":"BILB024D","sku":"","sysQty":0},{"id":"p0217","brand":"SBEE","name":"SLMPBS3A1","sku":"","sysQty":0},{"id":"p0218","brand":"SBEE","name":"SILW012C","sku":"","sysQty":0},{"id":"p0219","brand":"ESBEE","name":"ES60004","sku":"","sysQty":0},{"id":"p0220","brand":"SBEE","name":"IT505WCWMSP240A","sku":"","sysQty":0},{"id":"p0221","brand":"ESBEE","name":"ELLRG024D","sku":"","sysQty":0},{"id":"p0222","brand":"SBEE","name":"IC24A04W024D","sku":"","sysQty":0},{"id":"p0223","brand":"ESBEE","name":"EPLY110A","sku":"","sysQty":0},{"id":"p0224","brand":"ESBEE","name":"EP09SK00C0000","sku":"","sysQty":0},{"id":"p0225","brand":"ESBEE","name":"EP09SL00C0000","sku":"","sysQty":0},{"id":"p0226","brand":"ESBEE","name":"EG15RI10C024D","sku":"","sysQty":0},{"id":"p0227","brand":"SBEE","name":"MLPSS3A7","sku":"","sysQty":0},{"id":"p0228","brand":"ESBEE","name":"EC3M01008","sku":"","sysQty":0},{"id":"p0229","brand":"ESBEE","name":"EMNGMH1","sku":"","sysQty":0},{"id":"p0230","brand":"SBEE","name":"RBS0810024D01","sku":"","sysQty":0},{"id":"p0231","brand":"MISC","name":"25mm Steel Re-Inforced Pipe","sku":"","sysQty":0},{"id":"p0232","brand":"MISC","name":"AC01-T3-5R5G-B-W","sku":"","sysQty":0},{"id":"p0233","brand":"MISC","name":"AC310-T3-7R5G/011P-B","sku":"","sysQty":0},{"id":"p0234","brand":"MISC","name":"Capacitor","sku":"","sysQty":0},{"id":"p0235","brand":"MISC","name":"DA180-S5R0SG0 S TYPE","sku":"","sysQty":0},{"id":"p0236","brand":"MISC","name":"DAML-150-03-BC0-00","sku":"","sysQty":0},{"id":"p0237","brand":"MISC","name":"DAML-150-03-BE0-00","sku":"","sysQty":0},{"id":"p0238","brand":"MISC","name":"DAML-150-05-BC0-00","sku":"","sysQty":0},{"id":"p0239","brand":"MISC","name":"DAML-AB","sku":"","sysQty":0},{"id":"p0240","brand":"MISC","name":"DBEL-06-05-B0-0400","sku":"","sysQty":0},{"id":"p0241","brand":"MISC","name":"DBEL-15-03-A0-0100","sku":"","sysQty":0},{"id":"p0242","brand":"MISC","name":"DBEL-15-10-B0-0100","sku":"","sysQty":0},{"id":"p0243","brand":"MISC","name":"DBEL-AA","sku":"","sysQty":0},{"id":"p0244","brand":"MISC","name":"DBML-600-05-NWA-00","sku":"","sysQty":0},{"id":"p0245","brand":"MISC","name":"EB10.6","sku":"","sysQty":0},{"id":"p0246","brand":"RENU","name":"FIOA-0402-U-16-B","sku":"","sysQty":0},{"id":"p0247","brand":"RENU","name":"FIOA-0402-U-B","sku":"","sysQty":0},{"id":"p0248","brand":"RENU","name":"FIOA-0800L","sku":"","sysQty":0},{"id":"p0249","brand":"RENU","name":"FIOD0404R-B","sku":"","sysQty":0},{"id":"p0250","brand":"RENU","name":"FL004-0806P","sku":"","sysQty":0},{"id":"p0251","brand":"MISC","name":"FL1001","sku":"","sysQty":0},{"id":"p0252","brand":"MISC","name":"FL2002","sku":"","sysQty":0},{"id":"p0253","brand":"RENU","name":"FLD0016R","sku":"","sysQty":0},{"id":"p0254","brand":"RENU","name":"FLD1600","sku":"","sysQty":0},{"id":"p0255","brand":"RENU","name":"FP2043T","sku":"","sysQty":0},{"id":"p0256","brand":"RENU","name":"FP2043TN-LE1208P-A0402U-V3","sku":"","sysQty":0},{"id":"p0257","brand":"RENU","name":"FP2070T-E","sku":"","sysQty":0},{"id":"p0258","brand":"RENU","name":"FP2070TN-LE2016RP-A0402U","sku":"","sysQty":0},{"id":"p0259","brand":"RENU","name":"FPEM-1614RP-V2","sku":"","sysQty":0},{"id":"p0260","brand":"MISC","name":"GD100-2R2G-S2-PV","sku":"","sysQty":0},{"id":"p0261","brand":"MISC","name":"GD200A-004G/5R5P-4","sku":"","sysQty":0},{"id":"p0262","brand":"MISC","name":"GD200A-011G/015P-4","sku":"","sysQty":0},{"id":"p0263","brand":"MISC","name":"GD200A-7R5G/011P-4","sku":"","sysQty":0},{"id":"p0264","brand":"MISC","name":"IMS20A-08M75B30C-2-P94-E","sku":"","sysQty":0},{"id":"p0265","brand":"MISC","name":"IVC1L-0016ENR","sku":"","sysQty":0},{"id":"p0266","brand":"MISC","name":"IVC1L-1600ENN","sku":"","sysQty":0},{"id":"p0267","brand":"MISC","name":"IVC1L-4PT","sku":"","sysQty":0},{"id":"p0268","brand":"MISC","name":"IVC1L-5AM","sku":"","sysQty":0},{"id":"p0269","brand":"MISC","name":"IVC3-3232MAT-4","sku":"","sysQty":0},{"id":"p0270","brand":"MISC","name":"IVC-EH-0016ENT","sku":"","sysQty":0},{"id":"p0271","brand":"MISC","name":"K-Type Thermocouple","sku":"","sysQty":0},{"id":"p0272","brand":"MISC","name":"MISC:GREEN INDICATOR","sku":"","sysQty":0},{"id":"p0273","brand":"MISC","name":"MISC:M12 FEMALE 0\ufffd PUR 8x0,25 GRAY, drag ch 10m","sku":"","sysQty":0},{"id":"p0274","brand":"MISC","name":"MISC:PCFS-1","sku":"","sysQty":0},{"id":"p0275","brand":"MISC","name":"MISC:YELLOW INDICATOR","sku":"","sysQty":0},{"id":"p0276","brand":"MISC","name":"Mounting Clamp With Powder Coating - Black","sku":"","sysQty":0},{"id":"p0277","brand":"MISC","name":"Pressing Socket","sku":"","sysQty":0},{"id":"p0278","brand":"MISC","name":"SD700-7R6A-PA","sku":"","sysQty":0},{"id":"p0279","brand":"MISC","name":"SD700-9R5A-PA","sku":"","sysQty":0},{"id":"p0280","brand":"MISC","name":"SV-ML08-0R7G-2-SA4-1000","sku":"","sysQty":0},{"id":"p0281","brand":"MISC","name":"SV-MM13-1R0E-2-SA0-1000","sku":"","sysQty":0},{"id":"p0282","brand":"MISC","name":"SV-MM13-1R0E-4-9A0-1000","sku":"","sysQty":0},{"id":"p0283","brand":"MISC","name":"SV-MM13-1R5F-2-1A0-3000","sku":"","sysQty":0},{"id":"p0284","brand":"MISC","name":"TS633","sku":"","sysQty":0},{"id":"p0285","brand":"MISC","name":"V7E-L06A-R4030-Q1","sku":"","sysQty":0},{"id":"p0286","brand":"MISC","name":"V7E-L08A-R7520-Q1L","sku":"","sysQty":0},{"id":"p0287","brand":"MISC","name":"V7E-M13A-1R520-Q1","sku":"","sysQty":0},{"id":"p0288","brand":"MISC","name":"V7E-M13A-2R020-Q1","sku":"","sysQty":0},{"id":"p0289","brand":"MISC","name":"VC1-1208MDT","sku":"","sysQty":0},{"id":"p0290","brand":"MISC","name":"VC1-2820MAR","sku":"","sysQty":0},{"id":"p0291","brand":"MISC","name":"VC-4TC","sku":"","sysQty":0},{"id":"p0292","brand":"MISC","name":"VE04-L030-2SNL","sku":"","sysQty":0},{"id":"p0293","brand":"MISC","name":"VH-0808ETP","sku":"","sysQty":0},{"id":"p0294","brand":"MISC","name":"VI20-101S-FE","sku":"","sysQty":0},{"id":"p0295","brand":"MISC","name":"VS-070-1614MDR1","sku":"","sysQty":0},{"id":"p0296","brand":"MISC","name":"Wiring Accessories","sku":"","sysQty":0},{"id":"p0297","brand":"RED LION","name":"CR10000400000210","sku":"","sysQty":0},{"id":"p0298","brand":"RED LION","name":"CR30000700000420","sku":"","sysQty":0},{"id":"p0299","brand":"RED LION","name":"CR30001000000420","sku":"","sysQty":0},{"id":"p0300","brand":"RED LION","name":"CSPID2S0","sku":"","sysQty":0},{"id":"p0301","brand":"RED LION","name":"CUB5PB00","sku":"","sysQty":0},{"id":"p0302","brand":"RED LION","name":"G07C0000","sku":"","sysQty":0},{"id":"p0303","brand":"RED LION","name":"PAX2A000","sku":"","sysQty":0},{"id":"p0304","brand":"RED LION","name":"PAXCDC50","sku":"","sysQty":0},{"id":"p0305","brand":"RED LION","name":"PAXCDS20","sku":"","sysQty":0},{"id":"p0306","brand":"RED LION","name":"PAXS0000","sku":"","sysQty":0},{"id":"p0307","brand":"RED LION","name":"PAXS0010","sku":"","sysQty":0},{"id":"p0308","brand":"RED LION","name":"PTV00000","sku":"","sysQty":0},{"id":"p0309","brand":"RED LION","name":"SL-5ES-1","sku":"","sysQty":0},{"id":"p0310","brand":"RED LION","name":"PAXT0000","sku":"","sysQty":0},{"id":"p0311","brand":"RED LION","name":"PAXCDL10","sku":"","sysQty":0},{"id":"p0312","brand":"RED LION","name":"PAXCDS10","sku":"","sysQty":0},{"id":"p0313","brand":"RED LION","name":"IAMS0002","sku":"","sysQty":0},{"id":"p0314","brand":"RED LION","name":"PAXI0030","sku":"","sysQty":0},{"id":"p0315","brand":"RED LION","name":"716TX","sku":"","sysQty":0},{"id":"p0316","brand":"RED LION","name":"IFM0001","sku":"","sysQty":0},{"id":"p0317","brand":"RED LION","name":"PGMMOD05","sku":"","sysQty":0},{"id":"p0318","brand":"RED LION","name":"RA50CR4E00R000D0","sku":"","sysQty":0},{"id":"p0319","brand":"RED LION","name":"DA70A0FNNNNNN020","sku":"","sysQty":0},{"id":"p0320","brand":"RED LION","name":"DAM00PDP2S000000","sku":"","sysQty":0},{"id":"p0321","brand":"RED LION","name":"1002MC-LX-10","sku":"","sysQty":0},{"id":"p0322","brand":"RED LION","name":"CUB5RLY0","sku":"","sysQty":0},{"id":"p0323","brand":"SCHMERSAL","name":"ACC-CORNER PULLEY-A2","sku":"","sysQty":0},{"id":"p0324","brand":"SCHMERSAL","name":"ACC-PWR-PLY-S","sku":"","sysQty":0},{"id":"p0325","brand":"SCHMERSAL","name":"ACC-PWR-TB-M6-2","sku":"","sysQty":0},{"id":"p0326","brand":"SCHMERSAL","name":"ACC-PWR-WT-5MM-NIRO","sku":"","sysQty":0},{"id":"p0327","brand":"SCHMERSAL","name":"ACC-RS65X-TS","sku":"","sysQty":0},{"id":"p0328","brand":"SCHMERSAL","name":"ACC-RS65X-TS - 133032772","sku":"","sysQty":0},{"id":"p0329","brand":"SCHMERSAL","name":"A-K4P-M12-S-G-5M-BK-1-X-A-1","sku":"","sysQty":0},{"id":"p0330","brand":"SCHMERSAL","name":"A-K5P-M12-S-G-5M-BK-1-X-A-1","sku":"","sysQty":0},{"id":"p0331","brand":"SCHMERSAL","name":"A-K6P-M8-R-G-5M-GY-1-X-4/M8S-6P-5M","sku":"","sysQty":0},{"id":"p0332","brand":"SCHMERSAL","name":"A-K8P-M8-S-G-2M-BK-2-X-A-4","sku":"","sysQty":0},{"id":"p0333","brand":"SCHMERSAL","name":"A-K8P-M8-S-G-5M-BK-2-X-A-4","sku":"","sysQty":0},{"id":"p0334","brand":"SCHMERSAL","name":"AZ15/16-B1 CPL","sku":"","sysQty":0},{"id":"p0335","brand":"SCHMERSAL","name":"AZ15/16-B1-1747 Retrofit","sku":"","sysQty":0},{"id":"p0336","brand":"SCHMERSAL","name":"AZ15/16-B1-2053 CPL","sku":"","sysQty":0},{"id":"p0337","brand":"SCHMERSAL","name":"AZ15/16-B2 CPL","sku":"","sysQty":0},{"id":"p0338","brand":"SCHMERSAL","name":"AZ15/16-B6 KPL","sku":"","sysQty":0},{"id":"p0339","brand":"SCHMERSAL","name":"AZ15ZVRK-M16-1762","sku":"","sysQty":0},{"id":"p0340","brand":"SCHMERSAL","name":"AZ15ZVRK-M20","sku":"","sysQty":0},{"id":"p0341","brand":"SCHMERSAL","name":"AZ16-02ZVRK-M20","sku":"","sysQty":0},{"id":"p0342","brand":"SCHMERSAL","name":"AZ16-12ZVRK-M16","sku":"","sysQty":0},{"id":"p0343","brand":"SCHMERSAL","name":"AZ16-12ZVRK-M20","sku":"","sysQty":0},{"id":"p0344","brand":"SCHMERSAL","name":"AZ17/170-B1","sku":"","sysQty":0},{"id":"p0345","brand":"SCHMERSAL","name":"AZ17/170-B5","sku":"","sysQty":0},{"id":"p0346","brand":"SCHMERSAL","name":"AZ17-02ZRK","sku":"","sysQty":0},{"id":"p0347","brand":"SCHMERSAL","name":"AZ17-11ZK","sku":"","sysQty":0},{"id":"p0348","brand":"SCHMERSAL","name":"AZ17-11ZRK","sku":"","sysQty":0},{"id":"p0349","brand":"SCHMERSAL","name":"AZ17-B6","sku":"","sysQty":0},{"id":"p0350","brand":"SCHMERSAL","name":"AZ415-11/11ZPK-M20","sku":"","sysQty":0},{"id":"p0351","brand":"SCHMERSAL","name":"AZ415-STS30-05","sku":"","sysQty":0},{"id":"p0352","brand":"SCHMERSAL","name":"AZM150-B1","sku":"","sysQty":0},{"id":"p0353","brand":"SCHMERSAL","name":"AZM150-B6","sku":"","sysQty":0},{"id":"p0354","brand":"SCHMERSAL","name":"AZM161-B1 (151145117)","sku":"","sysQty":0},{"id":"p0355","brand":"SCHMERSAL","name":"AZM161SK-12/12RK-M16-24V","sku":"","sysQty":0},{"id":"p0356","brand":"SCHMERSAL","name":"AZM17/170-B5","sku":"","sysQty":0},{"id":"p0357","brand":"SCHMERSAL","name":"AZM170-02ZRK-24VAC/DC","sku":"","sysQty":0},{"id":"p0358","brand":"SCHMERSAL","name":"AZM170-B6","sku":"","sysQty":0},{"id":"p0359","brand":"SCHMERSAL","name":"AZM170SK-11/02ZRK-2197-24VAC/DC","sku":"","sysQty":0},{"id":"p0360","brand":"SCHMERSAL","name":"AZM170SK-11/02ZRKA-24VAC/DC","sku":"","sysQty":0},{"id":"p0361","brand":"SCHMERSAL","name":"AZM190-11/11RKAE0-24VDC","sku":"","sysQty":0},{"id":"p0362","brand":"SCHMERSAL","name":"BN20-RZ-M16","sku":"","sysQty":0},{"id":"p0363","brand":"SCHMERSAL","name":"BNS260-02/01Z-R-5M","sku":"","sysQty":0},{"id":"p0364","brand":"SCHMERSAL","name":"BNS260-02Z-ST-L","sku":"","sysQty":0},{"id":"p0365","brand":"SCHMERSAL","name":"BNS260-02Z-ST-R","sku":"","sysQty":0},{"id":"p0366","brand":"SCHMERSAL","name":"BNS260-11/01Z-R 5.0M","sku":"","sysQty":0},{"id":"p0367","brand":"SCHMERSAL","name":"BNS36-02/01ZG-R-5M","sku":"","sysQty":0},{"id":"p0368","brand":"SCHMERSAL","name":"BNS36-11/01Z-L","sku":"","sysQty":0},{"id":"p0369","brand":"SCHMERSAL","name":"BNS36-11ZG-L","sku":"","sysQty":0},{"id":"p0370","brand":"SCHMERSAL","name":"BP20-N","sku":"","sysQty":0},{"id":"p0371","brand":"SCHMERSAL","name":"BPS260-1","sku":"","sysQty":0},{"id":"p0372","brand":"SCHMERSAL","name":"BPS260-2","sku":"","sysQty":0},{"id":"p0373","brand":"SCHMERSAL","name":"BPS33","sku":"","sysQty":0},{"id":"p0374","brand":"SCHMERSAL","name":"BPS36-1","sku":"","sysQty":0},{"id":"p0375","brand":"SCHMERSAL","name":"FWS 1205C 24VDC","sku":"","sysQty":0},{"id":"p0376","brand":"SCHMERSAL","name":"KA-0904 (101207728)","sku":"","sysQty":0},{"id":"p0377","brand":"SCHMERSAL","name":"M12X100 EYEBOLT WITH 2 HEX NUT-SS316","sku":"","sysQty":0},{"id":"p0378","brand":"SCHMERSAL","name":"M-20 PVC Cable Gland","sku":"","sysQty":0},{"id":"p0379","brand":"SCHMERSAL","name":"M6-Tensioning Jack","sku":"","sysQty":0},{"id":"p0380","brand":"SCHMERSAL","name":"MBK311-YE-ADRR40RT-2NC","sku":"","sysQty":0},{"id":"p0381","brand":"SCHMERSAL","name":"Mounting PLATE-ZQ900 SWITCH","sku":"","sysQty":0},{"id":"p0382","brand":"SCHMERSAL","name":"MP-AZ415","sku":"","sysQty":0},{"id":"p0383","brand":"SCHMERSAL","name":"MR330-11Y-M20-1366","sku":"","sysQty":0},{"id":"p0384","brand":"SCHMERSAL","name":"MS WIRE CLAMP-5 MM - 103036618","sku":"","sysQty":0},{"id":"p0385","brand":"SCHMERSAL","name":"MS-AZM170 R/P","sku":"","sysQty":0},{"id":"p0386","brand":"SCHMERSAL","name":"MS-WIRE CLAMP-5MM -101203478","sku":"","sysQty":0},{"id":"p0387","brand":"SCHMERSAL","name":"RSS36-I2-D-ST","sku":"","sysQty":0},{"id":"p0388","brand":"SCHMERSAL","name":"RSS36-I2-D-ST-DU","sku":"","sysQty":0},{"id":"p0389","brand":"SCHMERSAL","name":"RST260-1","sku":"","sysQty":0},{"id":"p0390","brand":"SCHMERSAL","name":"RST36-1","sku":"","sysQty":0},{"id":"p0391","brand":"SCHMERSAL","name":"S900-SH Shackle","sku":"","sysQty":0},{"id":"p0392","brand":"SCHMERSAL","name":"SAFETY FENCING SCHMERSAL MAKE","sku":"","sysQty":0},{"id":"p0393","brand":"SCHMERSAL","name":"Schmersal Risk Assessment- Duplicate","sku":"","sysQty":0},{"id":"p0394","brand":"SCHMERSAL","name":"SE-AL20-1250","sku":"","sysQty":0},{"id":"p0395","brand":"SCHMERSAL","name":"SEP01.0.4.S.0.22/E1-137000274","sku":"","sysQty":0},{"id":"p0396","brand":"SCHMERSAL","name":"SE-P70-1250","sku":"","sysQty":0},{"id":"p0397","brand":"SCHMERSAL","name":"SHGV-B/LD1/102/12+BO","sku":"","sysQty":0},{"id":"p0398","brand":"SCHMERSAL","name":"SHGV-B/PAT102","sku":"","sysQty":0},{"id":"p0399","brand":"SCHMERSAL","name":"SHGV-B/PAT110","sku":"","sysQty":0},{"id":"p0400","brand":"SCHMERSAL","name":"SHGV-B/PAT12","sku":"","sysQty":0},{"id":"p0401","brand":"SCHMERSAL","name":"SLC440COM-ER-0330-14-1700","sku":"","sysQty":0},{"id":"p0402","brand":"SCHMERSAL","name":"SLC440COM-ER-0330-30-1700","sku":"","sysQty":0},{"id":"p0403","brand":"SCHMERSAL","name":"SLC440COM-ER-0330-35-1700","sku":"","sysQty":0},{"id":"p0404","brand":"SCHMERSAL","name":"SLC440COM-ER-0410-14-1700","sku":"","sysQty":0},{"id":"p0405","brand":"SCHMERSAL","name":"SLC440COM-ER-0410-35-1700","sku":"","sysQty":0},{"id":"p0406","brand":"SCHMERSAL","name":"SLC440COM-ER-0490-14-1700","sku":"","sysQty":0},{"id":"p0407","brand":"SCHMERSAL","name":"SLC440COM-ER-0490-30-1700","sku":"","sysQty":0},{"id":"p0408","brand":"SCHMERSAL","name":"SLC440COM-ER-0570-14-1700","sku":"","sysQty":0},{"id":"p0409","brand":"SCHMERSAL","name":"SLC440COM-ER-0570-30-1700","sku":"","sysQty":0},{"id":"p0410","brand":"SCHMERSAL","name":"SLC440COM-ER-0570-35-1700","sku":"","sysQty":0},{"id":"p0411","brand":"SCHMERSAL","name":"SLC440COM-ER-0650-30-1700","sku":"","sysQty":0},{"id":"p0412","brand":"SCHMERSAL","name":"SLC440COM-ER-0890-35-1700","sku":"","sysQty":0},{"id":"p0413","brand":"SCHMERSAL","name":"SLC440-ER-0170-30-01","sku":"","sysQty":0},{"id":"p0414","brand":"SCHMERSAL","name":"SPEAKER","sku":"","sysQty":0},{"id":"p0415","brand":"SCHMERSAL","name":"SRB301MC-24V (151190684)","sku":"","sysQty":0},{"id":"p0416","brand":"SCHMERSAL","name":"SRB-E-402ST","sku":"","sysQty":0},{"id":"p0417","brand":"SCHMERSAL","name":"SZ415-1","sku":"","sysQty":0},{"id":"p0418","brand":"SCHMERSAL","name":"TFA-010","sku":"","sysQty":0},{"id":"p0419","brand":"SCHMERSAL","name":"TK-M5","sku":"","sysQty":0},{"id":"p0420","brand":"SCHMERSAL","name":"TR235-11Z-M20","sku":"","sysQty":0},{"id":"p0421","brand":"SCHMERSAL","name":"TR335-12Z-M20","sku":"","sysQty":0},{"id":"p0422","brand":"SCHMERSAL","name":"TRC-461-12Z","sku":"","sysQty":0},{"id":"p0423","brand":"SCHMERSAL","name":"TS232-11-I-2888","sku":"","sysQty":0},{"id":"p0424","brand":"SCHMERSAL","name":"TZ/CO","sku":"","sysQty":0},{"id":"p0425","brand":"SCHMERSAL","name":"TZ/COF/HIS.1","sku":"","sysQty":0},{"id":"p0426","brand":"SCHMERSAL","name":"TZ-69 M3 (KEY)","sku":"","sysQty":0},{"id":"p0427","brand":"SCHMERSAL","name":"TZFCWS24VDC-2917","sku":"","sysQty":0},{"id":"p0428","brand":"SCHMERSAL","name":"TZFW4OES24VDC-2917","sku":"","sysQty":0},{"id":"p0429","brand":"SCHMERSAL","name":"TZFWS24VDC-2917","sku":"","sysQty":0},{"id":"p0430","brand":"SCHMERSAL","name":"Validation Post Risk Assessment- Duplicate","sku":"","sysQty":0},{"id":"p0431","brand":"SCHMERSAL","name":"Wire Rope-PCS-5MM - 103036643","sku":"","sysQty":0},{"id":"p0432","brand":"SCHMERSAL","name":"Z4V7H-336-11Z-M20","sku":"","sysQty":0},{"id":"p0433","brand":"SCHMERSAL","name":"Z4VH-335-11Z-M20","sku":"","sysQty":0},{"id":"p0434","brand":"SCHMERSAL","name":"ZQ700-11","sku":"","sysQty":0},{"id":"p0435","brand":"SCHMERSAL","name":"ZQ900-11","sku":"","sysQty":0},{"id":"p0436","brand":"SCHMERSAL","name":"ZQ900-11-N","sku":"","sysQty":0},{"id":"p0437","brand":"SCHMERSAL","name":"ZQ900-22","sku":"","sysQty":0},{"id":"p0438","brand":"SCHMERSAL","name":"ZQ900-22N","sku":"","sysQty":0},{"id":"p0439","brand":"SCHMERSAL","name":"ZS232-11-I2888","sku":"","sysQty":0},{"id":"p0440","brand":"SCHMERSAL","name":"ZS235-11Z-M20","sku":"","sysQty":0},{"id":"p0441","brand":"SCHMERSAL","name":"ZS236-11Z-M20","sku":"","sysQty":0},{"id":"p0442","brand":"UNISON","name":"101 PMDD 200 15 00 AL5","sku":"","sysQty":0},{"id":"p0443","brand":"UNISON","name":"101 PMDD 200 25 00 AL5","sku":"","sysQty":0},{"id":"p0444","brand":"UNISON","name":"101 RDA 60 50 01 AL5","sku":"","sysQty":0},{"id":"p0445","brand":"UNISON","name":"101 ZDA 48 10 00 AL5","sku":"","sysQty":0},{"id":"p0446","brand":"UNISON","name":"101 ZDA 48 10 00AL5 Duplicate","sku":"","sysQty":0},{"id":"p0447","brand":"UNISON","name":"101 ZDA 48 16 00 AL5","sku":"","sysQty":0},{"id":"p0448","brand":"UNISON","name":"101 ZDA 48 20 00 AL5","sku":"","sysQty":0},{"id":"p0449","brand":"UNISON","name":"101 ZDA 48 25 00 AL5","sku":"","sysQty":0},{"id":"p0450","brand":"UNISON","name":"101 ZDA 60 40 01 AL5","sku":"","sysQty":0},{"id":"p0451","brand":"UNISON","name":"101 ZDA 60 40 01 AL5 Duplicate","sku":"","sysQty":0},{"id":"p0452","brand":"UNISON","name":"101 ZDA 60 50 01 AL5","sku":"","sysQty":0},{"id":"p0453","brand":"UNISON","name":"102 ZDA 48 16/16 00","sku":"","sysQty":0},{"id":"p0454","brand":"UNISON","name":"102 ZDA 60 40/40 00 SIP","sku":"","sysQty":0},{"id":"p0455","brand":"UNISON","name":"102 ZDA 60 40/40 01","sku":"","sysQty":0},{"id":"p0456","brand":"UNISON","name":"102 ZDA 60 50 01 AL5","sku":"","sysQty":0},{"id":"p0457","brand":"UNISON","name":"108 PMDD 200 12 00","sku":"","sysQty":0},{"id":"p0458","brand":"UNISON","name":"108 ZDA 48 25 00","sku":"","sysQty":0},{"id":"p0459","brand":"UNISON","name":"108 ZDA 60 40 01","sku":"","sysQty":0},{"id":"p0460","brand":"UNISON","name":"110 CT 03CH RS485 1-50A + DIN","sku":"","sysQty":0},{"id":"p0461","brand":"UNISON","name":"110 CT 06CH RS485 1-50A + DIN","sku":"","sysQty":0},{"id":"p0462","brand":"UNISON","name":"110 CT 09CH RS485 1-50A + DIN","sku":"","sysQty":0},{"id":"p0463","brand":"UNISON","name":"301 3FR OLSP ZDA 60 05 01 (HEAT SINK D-67.5)","sku":"","sysQty":0},{"id":"p0464","brand":"UNISON","name":"301 3FR OLSP ZDA 60 10 01 (HEAT SINK D-67.5)","sku":"","sysQty":0},{"id":"p0465","brand":"UNISON","name":"301 3FR OLSPZDA 60 15 01 (HEAT SINK D-67.5)","sku":"","sysQty":0},{"id":"p0466","brand":"UNISON","name":"301 3FW DOLSP ZDA 60 05 01 (Heat Sink D-67.5)","sku":"","sysQty":0},{"id":"p0467","brand":"UNISON","name":"301 3FW DOLSP ZDA 60 10 01 (Heat Sink D-67.5)","sku":"","sysQty":0},{"id":"p0468","brand":"UNISON","name":"301 3PH SS BUR PHT 60 50","sku":"","sysQty":0},{"id":"p0469","brand":"UNISON","name":"301 3PH TPC A CT 60 50 (Heat Sink A-130 With FAN)","sku":"","sysQty":0},{"id":"p0470","brand":"UNISON","name":"703 CARD 2 CHANNEL","sku":"","sysQty":0},{"id":"p0471","brand":"UNISON","name":"703 CARD 24 CHANNEL","sku":"","sysQty":0},{"id":"p0472","brand":"UNISON","name":"703 CARD 4 CHANNEL","sku":"","sysQty":0},{"id":"p0473","brand":"UNISON","name":"703 CARD 8 CHANNEL","sku":"","sysQty":0},{"id":"p0474","brand":"UNISON","name":"703 Card 8 Channel","sku":"","sysQty":0},{"id":"p0475","brand":"UNISON","name":"703 CARD 8 CHANNEL WITH DIODE","sku":"","sysQty":0},{"id":"p0476","brand":"UNISON","name":"703 PMDD 200 05 00","sku":"","sysQty":0},{"id":"p0477","brand":"UNISON","name":"703 ZDA 30 02 00","sku":"","sysQty":0},{"id":"p0478","brand":"UNISON","name":"703 ZDA 33 03 00","sku":"","sysQty":0},{"id":"p0479","brand":"UNISON","name":"703 ZDA 48 05 00","sku":"","sysQty":0},{"id":"p0480","brand":"UNISON","name":"704-A PMDD 200 05 00","sku":"","sysQty":0},{"id":"p0481","brand":"UNISON","name":"704-A ZDA 48 05 00","sku":"","sysQty":0},{"id":"p0482","brand":"UNISON","name":"704-B PMDD 200 05 00","sku":"","sysQty":0},{"id":"p0483","brand":"UNISON","name":"704-B ZDA 48 05 00","sku":"","sysQty":0},{"id":"p0484","brand":"UNISON","name":"706 ZDA 33 07 05","sku":"","sysQty":0},{"id":"p0485","brand":"UNISON","name":"801 3PH ZDA 48 25 00","sku":"","sysQty":0},{"id":"p0486","brand":"UNISON","name":"801 3PH ZDA 48 25 18","sku":"","sysQty":0},{"id":"p0487","brand":"UNISON","name":"801 3PH ZDA 48 40 00","sku":"","sysQty":0},{"id":"p0488","brand":"UNISON","name":"801 NO/NC DA 33 25 00","sku":"","sysQty":0},{"id":"p0489","brand":"UNISON","name":"801 PMDD 200 15 00","sku":"","sysQty":0},{"id":"p0490","brand":"UNISON","name":"801 PMDD 200 15 00 Duplicate","sku":"","sysQty":0},{"id":"p0491","brand":"UNISON","name":"801 PMDD 200 25 00","sku":"","sysQty":0},{"id":"p0492","brand":"UNISON","name":"801 PMDD 500 14 00","sku":"","sysQty":0},{"id":"p0493","brand":"UNISON","name":"801 PMDD 55 100 00","sku":"","sysQty":0},{"id":"p0494","brand":"UNISON","name":"801 PMDD 55 35 00","sku":"","sysQty":0},{"id":"p0495","brand":"UNISON","name":"801 RDA 48 25 01","sku":"","sysQty":0},{"id":"p0496","brand":"UNISON","name":"801 RDA 48 50 01","sku":"","sysQty":0},{"id":"p0497","brand":"UNISON","name":"801 ZAA 48 25 28","sku":"","sysQty":0},{"id":"p0498","brand":"UNISON","name":"801 ZDA 48 16 01","sku":"","sysQty":0},{"id":"p0499","brand":"UNISON","name":"801 ZDA 48 25 01","sku":"","sysQty":0},{"id":"p0500","brand":"UNISON","name":"801 ZDA 48 40 01","sku":"","sysQty":0},{"id":"p0501","brand":"UNISON","name":"801 ZDA 48 50 01","sku":"","sysQty":0},{"id":"p0502","brand":"UNISON","name":"801 ZDA 48 90 01","sku":"","sysQty":0},{"id":"p0503","brand":"UNISON","name":"802 PMDD 100 06 00","sku":"","sysQty":0},{"id":"p0504","brand":"UNISON","name":"802 SSR SOCKET","sku":"","sysQty":0},{"id":"p0505","brand":"UNISON","name":"802 SSR SOCKET-Duplicate","sku":"","sysQty":0},{"id":"p0506","brand":"UNISON","name":"802 ZDA 33 06 00","sku":"","sysQty":0},{"id":"p0507","brand":"UNISON","name":"803 FDZDA 48 25 01","sku":"","sysQty":0},{"id":"p0508","brand":"UNISON","name":"803 FDZDA 58 40 01","sku":"","sysQty":0},{"id":"p0509","brand":"UNISON","name":"803 FDZDA 58 50 01","sku":"","sysQty":0},{"id":"p0510","brand":"UNISON","name":"803 PHT 24 200 420","sku":"","sysQty":0},{"id":"p0511","brand":"UNISON","name":"803 PHT 24 25 420","sku":"","sysQty":0},{"id":"p0512","brand":"UNISON","name":"803 PHT 24 40 420","sku":"","sysQty":0},{"id":"p0513","brand":"UNISON","name":"803 PHT 24 50 010","sku":"","sysQty":0},{"id":"p0514","brand":"UNISON","name":"803 PHT 24 50 420","sku":"","sysQty":0},{"id":"p0515","brand":"UNISON","name":"803 PHT 24 90 420","sku":"","sysQty":0},{"id":"p0516","brand":"UNISON","name":"803 PHT 44 200 420","sku":"","sysQty":0},{"id":"p0517","brand":"UNISON","name":"803 PHT 44 25 420","sku":"","sysQty":0},{"id":"p0518","brand":"UNISON","name":"803 PHT 44 40 420","sku":"","sysQty":0},{"id":"p0519","brand":"UNISON","name":"803 PHT 44 50 420","sku":"","sysQty":0},{"id":"p0520","brand":"UNISON","name":"803 PHT 44 90 420","sku":"","sysQty":0},{"id":"p0521","brand":"UNISON","name":"803 PMDD 150 15 00","sku":"","sysQty":0},{"id":"p0522","brand":"UNISON","name":"803 PMDD 200 15 00","sku":"","sysQty":0},{"id":"p0523","brand":"UNISON","name":"803 PMDD 200 20 00","sku":"","sysQty":0},{"id":"p0524","brand":"UNISON","name":"803 PMDD 55 35 00","sku":"","sysQty":0},{"id":"p0525","brand":"UNISON","name":"803 PMDD 60 30 00","sku":"","sysQty":0},{"id":"p0526","brand":"UNISON","name":"803 ZAA 48 25 26","sku":"","sysQty":0},{"id":"p0527","brand":"UNISON","name":"803 ZAA 58 50 26","sku":"","sysQty":0},{"id":"p0528","brand":"UNISON","name":"803 ZAA 58 50 26 Duplicate","sku":"","sysQty":0},{"id":"p0529","brand":"UNISON","name":"803 ZAA 58 90 26","sku":"","sysQty":0},{"id":"p0530","brand":"UNISON","name":"803 ZDA 48 25 01","sku":"","sysQty":0},{"id":"p0531","brand":"UNISON","name":"803 ZDA 48 25 01 + HS V-87 DIN","sku":"","sysQty":0},{"id":"p0532","brand":"UNISON","name":"803 ZDA 48 25 01 Duplicate","sku":"","sysQty":0},{"id":"p0533","brand":"UNISON","name":"803 ZDA 48 40 01 Duplicate","sku":"","sysQty":0},{"id":"p0534","brand":"UNISON","name":"803 ZDA 55 40 01","sku":"","sysQty":0},{"id":"p0535","brand":"UNISON","name":"803 ZDA 55 50 01","sku":"","sysQty":0},{"id":"p0536","brand":"UNISON","name":"803 ZDA 58 200 01","sku":"","sysQty":0},{"id":"p0537","brand":"UNISON","name":"803 ZDA 58 50 01 + HS B-24 DIN","sku":"","sysQty":0},{"id":"p0538","brand":"UNISON","name":"803 ZDA 58 50 01 UL","sku":"","sysQty":0},{"id":"p0539","brand":"UNISON","name":"803 ZDA 58 90 01","sku":"","sysQty":0},{"id":"p0540","brand":"UNISON","name":"805 3PH ZUA 48 16 02","sku":"","sysQty":0},{"id":"p0541","brand":"UNISON","name":"805 3PH ZUA 48 50 02","sku":"","sysQty":0},{"id":"p0542","brand":"UNISON","name":"805 3PH ZUA 48 90 02","sku":"","sysQty":0},{"id":"p0543","brand":"UNISON","name":"806 CARD 8 CHANNEL","sku":"","sysQty":0},{"id":"p0544","brand":"UNISON","name":"806 PMDD 100 05 41","sku":"","sysQty":0},{"id":"p0545","brand":"UNISON","name":"806 PMDD 100 05 51 Duplicate","sku":"","sysQty":0},{"id":"p0546","brand":"UNISON","name":"806 RDD 100 05 01","sku":"","sysQty":0},{"id":"p0547","brand":"UNISON","name":"806 ZDA 48 05 41","sku":"","sysQty":0},{"id":"p0548","brand":"UNISON","name":"807 PMDD 100 08 01","sku":"","sysQty":0},{"id":"p0549","brand":"UNISON","name":"807 ZDA 48 08 01","sku":"","sysQty":0},{"id":"p0550","brand":"UNISON","name":"808 PMDD 200 12 00","sku":"","sysQty":0},{"id":"p0551","brand":"UNISON","name":"808 PMDD 500 02 00","sku":"","sysQty":0},{"id":"p0552","brand":"UNISON","name":"808 ZDA 48 25 00","sku":"","sysQty":0},{"id":"p0553","brand":"UNISON","name":"901 4T POT 40 FULL","sku":"","sysQty":0},{"id":"p0554","brand":"UNISON","name":"901 MCBUR 60 200 420 CU2 1S","sku":"","sysQty":0},{"id":"p0555","brand":"UNISON","name":"901 MCBUR 60 200 420 CU2 4S","sku":"","sysQty":0},{"id":"p0556","brand":"UNISON","name":"901 MCBUR 60 50 010 AL5 1S","sku":"","sysQty":0},{"id":"p0557","brand":"UNISON","name":"901 MCBUR 60 50 010 AL5 2S","sku":"","sysQty":0},{"id":"p0558","brand":"UNISON","name":"901 MCBUR 60 50 420 AL5 1S","sku":"","sysQty":0},{"id":"p0559","brand":"UNISON","name":"901 MCBUR 60 50 420 AL5 4S","sku":"","sysQty":0},{"id":"p0560","brand":"UNISON","name":"901 MCBUR 60 50 420 AL5 4S + HS G-68 DIN","sku":"","sysQty":0},{"id":"p0561","brand":"UNISON","name":"901 MCBUR 60 90 010 CU2 1S","sku":"","sysQty":0},{"id":"p0562","brand":"UNISON","name":"901 MCBUR 60 90 010 CU2 4S","sku":"","sysQty":0},{"id":"p0563","brand":"UNISON","name":"901 MCBUR 60 90 420 CU2 1S","sku":"","sysQty":0},{"id":"p0564","brand":"UNISON","name":"901 MCBUR 60 90 420 CU2 4S","sku":"","sysQty":0},{"id":"p0565","brand":"UNISON","name":"901 MCBUR 60 90 420 CU2 4S + HS B-48 DIN","sku":"","sysQty":0},{"id":"p0566","brand":"UNISON","name":"901 MCPHT 48 200 010 CU2","sku":"","sysQty":0},{"id":"p0567","brand":"UNISON","name":"901 MCPHT 48 200 420 CU2","sku":"","sysQty":0},{"id":"p0568","brand":"UNISON","name":"901 MCPHT 48 50 010 AL5","sku":"","sysQty":0},{"id":"p0569","brand":"UNISON","name":"901 MCPHT 48 50 420 AL5","sku":"","sysQty":0},{"id":"p0570","brand":"UNISON","name":"901 MCPHT 48 50 420 AL5 Duplicate","sku":"","sysQty":0},{"id":"p0571","brand":"UNISON","name":"901 MCPHT 48 90 010 CU2","sku":"","sysQty":0},{"id":"p0572","brand":"UNISON","name":"901 MCPHT 48 90 420 CU2","sku":"","sysQty":0},{"id":"p0573","brand":"UNISON","name":"901 PHT 24 150 420 CU2","sku":"","sysQty":0},{"id":"p0574","brand":"UNISON","name":"901 PHT 24 200 420 CU2","sku":"","sysQty":0},{"id":"p0575","brand":"UNISON","name":"901 PHT 24 25 010 AL5","sku":"","sysQty":0},{"id":"p0576","brand":"UNISON","name":"901 PHT 24 25 420 AL5","sku":"","sysQty":0},{"id":"p0577","brand":"UNISON","name":"901 PHT 24 40 420 AL5","sku":"","sysQty":0},{"id":"p0578","brand":"UNISON","name":"901 PHT 24 40 420 AL5+Heat Sink G-68","sku":"","sysQty":0},{"id":"p0579","brand":"UNISON","name":"901 PHT 24 50 010 AL5","sku":"","sysQty":0},{"id":"p0580","brand":"UNISON","name":"901 PHT 24 50 420 AL5","sku":"","sysQty":0},{"id":"p0581","brand":"UNISON","name":"901 PHT 24 90 010 CU2","sku":"","sysQty":0},{"id":"p0582","brand":"UNISON","name":"901 PHT 24 90 420 CU2","sku":"","sysQty":0},{"id":"p0583","brand":"UNISON","name":"901 PHT 24 90 420 CU2 Duplicate","sku":"","sysQty":0},{"id":"p0584","brand":"UNISON","name":"901 PHT 44 150 420 CU2","sku":"","sysQty":0},{"id":"p0585","brand":"UNISON","name":"901 PHT 44 200 420 CU2","sku":"","sysQty":0},{"id":"p0586","brand":"UNISON","name":"901 PHT 44 25 420 AL5","sku":"","sysQty":0},{"id":"p0587","brand":"UNISON","name":"901 PHT 44 40 010 AL5","sku":"","sysQty":0},{"id":"p0588","brand":"UNISON","name":"901 PHT 44 40 420 AL5","sku":"","sysQty":0},{"id":"p0589","brand":"UNISON","name":"901 PHT 44 50 420 AL5","sku":"","sysQty":0},{"id":"p0590","brand":"UNISON","name":"901 PHT 44 90 010 CU2","sku":"","sysQty":0},{"id":"p0591","brand":"UNISON","name":"901 PHT 44 90 420 CU2","sku":"","sysQty":0},{"id":"p0592","brand":"UNISON","name":"901 PMDD 200 20 00","sku":"","sysQty":0},{"id":"p0593","brand":"UNISON","name":"901 PMDD 200 30 00","sku":"","sysQty":0},{"id":"p0594","brand":"UNISON","name":"901 PMDD 60 30 00","sku":"","sysQty":0},{"id":"p0595","brand":"UNISON","name":"901 PMDD 85 45 00","sku":"","sysQty":0},{"id":"p0596","brand":"UNISON","name":"901 PMDD 85 90 00","sku":"","sysQty":0},{"id":"p0597","brand":"UNISON","name":"901 POT 23 25 FULL","sku":"","sysQty":0},{"id":"p0598","brand":"UNISON","name":"901 POT 23 25 HALF","sku":"","sysQty":0},{"id":"p0599","brand":"UNISON","name":"901 POT 23 50 FULL","sku":"","sysQty":0},{"id":"p0600","brand":"UNISON","name":"901 RDA 48 25 01 AL5","sku":"","sysQty":0},{"id":"p0601","brand":"UNISON","name":"901 RDA 60 50 01 AL5","sku":"","sysQty":0},{"id":"p0602","brand":"UNISON","name":"901 RDA 60 90 01 CU2","sku":"","sysQty":0},{"id":"p0603","brand":"UNISON","name":"901 ZAA 48 25 28 AL5","sku":"","sysQty":0},{"id":"p0604","brand":"UNISON","name":"901 ZAA 48 40 28 AL5","sku":"","sysQty":0},{"id":"p0605","brand":"UNISON","name":"901 ZAA 60 200 28 CU2","sku":"","sysQty":0},{"id":"p0606","brand":"UNISON","name":"901 ZAA 60 50 28 AL5","sku":"","sysQty":0},{"id":"p0607","brand":"UNISON","name":"901 ZAA 60 90 28 CU2","sku":"","sysQty":0},{"id":"p0608","brand":"UNISON","name":"901 ZDA 48 25 01 AL5","sku":"","sysQty":0},{"id":"p0609","brand":"UNISON","name":"901 ZDA 48 25 01 C56","sku":"","sysQty":0},{"id":"p0610","brand":"UNISON","name":"901 ZDA 48 40 01 C56","sku":"","sysQty":0},{"id":"p0611","brand":"UNISON","name":"901 ZDA 60 200 01 CU2","sku":"","sysQty":0},{"id":"p0612","brand":"UNISON","name":"901 ZDA 60 40 01 AL5","sku":"","sysQty":0},{"id":"p0613","brand":"UNISON","name":"901 ZDA 60 50 01 AL5","sku":"","sysQty":0},{"id":"p0614","brand":"UNISON","name":"901 ZDA 60 50 01 C56","sku":"","sysQty":0},{"id":"p0615","brand":"UNISON","name":"901 ZDA 60 90 01 CU2","sku":"","sysQty":0},{"id":"p0616","brand":"UNISON","name":"901 ZDA 60 90 01 CU2 + HS B-48 DIN","sku":"","sysQty":0},{"id":"p0617","brand":"UNISON","name":"901 ZDA 60 90 01 CU2 + HS B-72 DIN","sku":"","sysQty":0},{"id":"p0618","brand":"UNISON","name":"905 3FR OLSP ZDA 28 10 01  (Heat sink E-75)","sku":"","sysQty":0},{"id":"p0619","brand":"UNISON","name":"905 3FR OLSP ZDA 48 05 01","sku":"","sysQty":0},{"id":"p0620","brand":"UNISON","name":"905 3FR OLSP ZDA 48 05 01  (Heat sink E-75)","sku":"","sysQty":0},{"id":"p0621","brand":"UNISON","name":"905 3FR OLSP ZDA 48 10 01","sku":"","sysQty":0},{"id":"p0622","brand":"UNISON","name":"905 3FR OLSP ZDA 48 10 01 (Heat Sink E-75)","sku":"","sysQty":0},{"id":"p0623","brand":"UNISON","name":"905 3FR OLSP ZDA 48 15 01","sku":"","sysQty":0},{"id":"p0624","brand":"UNISON","name":"905 3FR ZDA 48 25 20","sku":"","sysQty":0},{"id":"p0625","brand":"UNISON","name":"905 3FR ZDA 48 50 01","sku":"","sysQty":0},{"id":"p0626","brand":"UNISON","name":"905 3FR ZDA 48 50 20","sku":"","sysQty":0},{"id":"p0627","brand":"UNISON","name":"905 3FR ZDA 48 90 20","sku":"","sysQty":0},{"id":"p0628","brand":"UNISON","name":"905 3FR ZUA 48 25 02","sku":"","sysQty":0},{"id":"p0629","brand":"UNISON","name":"905 3FR ZUA 48 50 02","sku":"","sysQty":0},{"id":"p0630","brand":"UNISON","name":"905 3FR ZUA 48 90 02","sku":"","sysQty":0},{"id":"p0631","brand":"UNISON","name":"905 3FW DOLSP ZDA 48 05 01","sku":"","sysQty":0},{"id":"p0632","brand":"UNISON","name":"905 3FW DOLSP ZDA 48 05 01 (Heat Sink E-75)","sku":"","sysQty":0},{"id":"p0633","brand":"UNISON","name":"905 3FW DOLSP ZDA 48 10 01","sku":"","sysQty":0},{"id":"p0634","brand":"UNISON","name":"905 3FW DOLSP ZDA 48 10 01 BFW (Heat Sink E-75)","sku":"","sysQty":0},{"id":"p0635","brand":"UNISON","name":"905 3FW DOLSP ZDA 48 15 01 ( Heat Sink A-100 )","sku":"","sysQty":0},{"id":"p0636","brand":"UNISON","name":"905 3PH ZAA 48 25 28","sku":"","sysQty":0},{"id":"p0637","brand":"UNISON","name":"905 3PH ZAA 48 40 28","sku":"","sysQty":0},{"id":"p0638","brand":"UNISON","name":"905 3PH ZAA 48 50 28","sku":"","sysQty":0},{"id":"p0639","brand":"UNISON","name":"905 3PH ZDA 48 25 01","sku":"","sysQty":0},{"id":"p0640","brand":"UNISON","name":"905 3PH ZDA 48 40 01","sku":"","sysQty":0},{"id":"p0641","brand":"UNISON","name":"905 3PH ZDA 48 40 01 ( With Short Circuit )","sku":"","sysQty":0},{"id":"p0642","brand":"UNISON","name":"905 3PH ZDA 48 40 01-Duplicate","sku":"","sysQty":0},{"id":"p0643","brand":"UNISON","name":"905 3PH ZDA 48 50 01","sku":"","sysQty":0},{"id":"p0644","brand":"UNISON","name":"905 3PH ZUA 48 40 02","sku":"","sysQty":0},{"id":"p0645","brand":"UNISON","name":"905 3PH ZUA 48 50 02","sku":"","sysQty":0},{"id":"p0646","brand":"UNISON","name":"905 3PH ZUA 48 90 02","sku":"","sysQty":0},{"id":"p0647","brand":"UNISON","name":"905 CLOS 23 25 010 HALF","sku":"","sysQty":0},{"id":"p0648","brand":"UNISON","name":"905 CLOS 24 50 010 FULL","sku":"","sysQty":0},{"id":"p0649","brand":"UNISON","name":"905 OPEN 23 25 010 HALF","sku":"","sysQty":0},{"id":"p0650","brand":"UNISON","name":"905 OPEN 23 50 010 FULL","sku":"","sysQty":0},{"id":"p0651","brand":"UNISON","name":"905 OPEN 44 50 010 FULL","sku":"","sysQty":0},{"id":"p0652","brand":"UNISON","name":"909 SCDD 55 02 00 02CH","sku":"","sysQty":0},{"id":"p0653","brand":"UNISON","name":"909 SCDD 55 02 00 04CH","sku":"","sysQty":0},{"id":"p0654","brand":"UNISON","name":"909 SCDD 55 02 00 08CH","sku":"","sysQty":0},{"id":"p0655","brand":"UNISON","name":"995748840120","sku":"","sysQty":0},{"id":"p0656","brand":"UNISON","name":"995748841769","sku":"","sysQty":0},{"id":"p0657","brand":"UNISON","name":"CT 0-100AMP PRO 0-10VDC WITH BUFFER","sku":"","sysQty":0},{"id":"p0658","brand":"UNISON","name":"CT 0-100AMP PRO 0-10VDC WITHOUT BUFFER","sku":"","sysQty":0},{"id":"p0659","brand":"UNISON","name":"CT 0-10AMP PRO 0-10VDC WITH BUFFER","sku":"","sysQty":0},{"id":"p0660","brand":"UNISON","name":"CT 0-10AMP PRO 0-10VDC Without Buffer","sku":"","sysQty":0},{"id":"p0661","brand":"UNISON","name":"CT 0-150 AMP PRO 0-10VDC WITHOUT BUFFER","sku":"","sysQty":0},{"id":"p0662","brand":"UNISON","name":"CT 0-30 AMP PRO 0-10VDC WITHOUT BUFFER","sku":"","sysQty":0},{"id":"p0663","brand":"UNISON","name":"CT 0-30AMP PRO 0-10VDC With Buffer","sku":"","sysQty":0},{"id":"p0664","brand":"UNISON","name":"CT 0-50AMP PRO 0-10VDC  WITHOUT BUFFER","sku":"","sysQty":0},{"id":"p0665","brand":"UNISON","name":"CT 0-50AMP PRO 0-10VDC WITH BUFFER","sku":"","sysQty":0},{"id":"p0666","brand":"UNISON","name":"DIN RAIL 22.5 MM","sku":"","sysQty":0},{"id":"p0667","brand":"UNISON","name":"DIN RAIL 42MM","sku":"","sysQty":0},{"id":"p0668","brand":"UNISON","name":"HEAT SINK ' E-68' + DIN","sku":"","sysQty":0},{"id":"p0669","brand":"UNISON","name":"HEAT SINK ' E-75' + DIN","sku":"","sysQty":0},{"id":"p0670","brand":"UNISON","name":"HEAT SINK 'A-100' + DIN","sku":"","sysQty":0},{"id":"p0671","brand":"UNISON","name":"HEAT SINK 'A-100' + DIN with Fan","sku":"","sysQty":0},{"id":"p0672","brand":"UNISON","name":"HEAT SINK 'A-190' WITH FAN","sku":"","sysQty":0},{"id":"p0673","brand":"UNISON","name":"HEAT SINK 'A-190' WITHOUT FAN","sku":"","sysQty":0},{"id":"p0674","brand":"UNISON","name":"HEAT SINK 'A-190' WITHOUT FAN Dupicate","sku":"","sysQty":0},{"id":"p0675","brand":"UNISON","name":"HEAT SINK 'A-285' WITH FAN","sku":"","sysQty":0},{"id":"p0676","brand":"UNISON","name":"HEAT SINK 'A-285' WITHOUT FAN","sku":"","sysQty":0},{"id":"p0677","brand":"UNISON","name":"HEAT SINK 'B-24' + DIN","sku":"","sysQty":0},{"id":"p0678","brand":"UNISON","name":"HEAT SINK 'B-48' + DIN","sku":"","sysQty":0},{"id":"p0679","brand":"UNISON","name":"HEAT SINK 'B-72' + DIN","sku":"","sysQty":0},{"id":"p0680","brand":"UNISON","name":"HEAT SINK 'B-96' + DIN","sku":"","sysQty":0},{"id":"p0681","brand":"UNISON","name":"HEAT SINK 'G-12.5' + DIN","sku":"","sysQty":0},{"id":"p0682","brand":"UNISON","name":"HEAT SINK 'G-30' + DIN","sku":"","sysQty":0},{"id":"p0683","brand":"UNISON","name":"HEAT SINK 'G-68' + DIN","sku":"","sysQty":0},{"id":"p0684","brand":"UNISON","name":"HEAT SINK 'T-190' WITH A.C FAN","sku":"","sysQty":0},{"id":"p0685","brand":"UNISON","name":"HEAT SINK 'T-190' WITHOUT FAN","sku":"","sysQty":0},{"id":"p0686","brand":"UNISON","name":"HEAT SINK 'T-67.5' + DIN","sku":"","sysQty":0},{"id":"p0687","brand":"UNISON","name":"HEAT SINK 'V-87' + DIN","sku":"","sysQty":0},{"id":"p0688","brand":"UNISON","name":"HEAT SINK A-285 WITH FAN-Duplicate","sku":"","sysQty":0},{"id":"p0689","brand":"UNISON","name":"HEAT SINK C-56 + DIN","sku":"","sysQty":0},{"id":"p0690","brand":"UNISON","name":"HEAT SINK T-22.5 + DIN","sku":"","sysQty":0},{"id":"p0691","brand":"UNISON","name":"HEAT SINK T-45 + DIN","sku":"","sysQty":0},{"id":"p0692","brand":"UNISON","name":"HEAT SINK T-90 + DIN","sku":"","sysQty":0},{"id":"p0693","brand":"UNISON","name":"POT 10K SINGLE TURN","sku":"","sysQty":0},{"id":"p0694","brand":"UNISON","name":"SCANNER CARD 1- 16CH","sku":"","sysQty":0},{"id":"p0695","brand":"UNISON","name":"SCANNER CARD 1- 8 CH","sku":"","sysQty":0},{"id":"p0696","brand":"UNISON","name":"UNI 803 PMDD 200 20 00 Duplicate","sku":"","sysQty":0},{"id":"p0697","brand":"UNISON","name":"Unison:803 PMDD 200 20 00 Duplicate","sku":"","sysQty":0},{"id":"p0698","brand":"UNISON","name":"Unison:803 ZAA 48 25 26 Duplicate","sku":"","sysQty":0},{"id":"p0699","brand":"UNISON","name":"V-87 HEAT SINK Duplicate","sku":"","sysQty":0},{"id":"p0700","brand":"MULTISPAN","name":"807 ZDA 48 08 01","sku":"","sysQty":108},{"id":"p0701","brand":"MULTISPAN","name":"Wire Rope-PCS-5MM - 103036643","sku":"","sysQty":95},{"id":"p0702","brand":"MULTISPAN","name":"MS-WIRE CLAMP-5MM -101203478","sku":"","sysQty":7},{"id":"p0703","brand":"MULTISPAN","name":"Omron:S8FS-C35024J","sku":"","sysQty":10},{"id":"p0704","brand":"MULTISPAN","name":"BNS260-02/01Z-R-5M","sku":"","sysQty":29},{"id":"p0705","brand":"MULTISPAN","name":"803 ZDA 58 50 01 UL","sku":"","sysQty":268},{"id":"p0706","brand":"MULTISPAN","name":"909 SCDD 55 02 00 08CH","sku":"","sysQty":59},{"id":"p0707","brand":"MULTISPAN","name":"909 SCDD 55 02 00 04CH","sku":"","sysQty":118},{"id":"p0708","brand":"MULTISPAN","name":"901 ZDA 60 90 01 CU2","sku":"","sysQty":156},{"id":"p0709","brand":"MULTISPAN","name":"AE-08-024D-1-B-C/G5Q (11100586)","sku":"","sysQty":40},{"id":"p0710","brand":"MULTISPAN","name":"AE-02-024D-2-B-C","sku":"","sysQty":7},{"id":"p0711","brand":"MULTISPAN","name":"Omron:PYF14A-N","sku":"","sysQty":88},{"id":"p0712","brand":"MULTISPAN","name":"Z4VH-335-11Z-M20","sku":"","sysQty":4},{"id":"p0713","brand":"MULTISPAN","name":"AMP-13-E3-00","sku":"","sysQty":12},{"id":"p0714","brand":"MULTISPAN","name":"AE-01-024D-1-B","sku":"","sysQty":8},{"id":"p0715","brand":"MULTISPAN","name":"AE-02-024D-1-B-C","sku":"","sysQty":45},{"id":"p0716","brand":"MULTISPAN","name":"AE-04-024D-2-B-C (11100214)","sku":"","sysQty":8},{"id":"p0717","brand":"MULTISPAN","name":"AE-08-024D-1-B-C (11100194)","sku":"","sysQty":130},{"id":"p0718","brand":"MULTISPAN","name":"AE-08-024D-1-FFI-B-C","sku":"","sysQty":9},{"id":"p0719","brand":"MULTISPAN","name":"AE-08-024D-2-BC (11100202)","sku":"","sysQty":12},{"id":"p0720","brand":"MULTISPAN","name":"AE-08-230A-1B","sku":"","sysQty":20},{"id":"p0721","brand":"MULTISPAN","name":"AE-08-230A-2-B-C","sku":"","sysQty":9},{"id":"p0722","brand":"MULTISPAN","name":"AE-16-024D-1-B-C (11100193)","sku":"","sysQty":6},{"id":"p0723","brand":"MULTISPAN","name":"AE-16-230A-1-B-C","sku":"","sysQty":15},{"id":"p0724","brand":"MULTISPAN","name":"AE-S-08-024D-230A-B-C","sku":"","sysQty":9},{"id":"p0725","brand":"MULTISPAN","name":"PRCML 18-8DP","sku":"","sysQty":2},{"id":"p0726","brand":"MULTISPAN","name":"B2NB-B1D-G","sku":"","sysQty":11},{"id":"p0727","brand":"MULTISPAN","name":"Autonics:BR3M-MDT-CP-PNP","sku":"","sysQty":1},{"id":"p0728","brand":"MULTISPAN","name":"Autonics:PT8-3DP","sku":"","sysQty":1},{"id":"p0729","brand":"MULTISPAN","name":"AP03FD2R024D012","sku":"","sysQty":12},{"id":"p0730","brand":"MULTISPAN","name":"EC1C","sku":"","sysQty":810},{"id":"p0731","brand":"MULTISPAN","name":"EC2C","sku":"","sysQty":350},{"id":"p0732","brand":"MULTISPAN","name":"EE09AH5R00","sku":"","sysQty":20},{"id":"p0733","brand":"MULTISPAN","name":"EE3RMH1","sku":"","sysQty":10},{"id":"p0734","brand":"MULTISPAN","name":"EG02MG0R","sku":"","sysQty":26},{"id":"p0735","brand":"MULTISPAN","name":"EG02TD0I","sku":"","sysQty":5},{"id":"p0736","brand":"MULTISPAN","name":"EG03FDLA024C","sku":"","sysQty":53},{"id":"p0737","brand":"MULTISPAN","name":"EG03FDLA240A","sku":"","sysQty":99},{"id":"p0738","brand":"MULTISPAN","name":"EG03FDLB024C","sku":"","sysQty":97},{"id":"p0739","brand":"MULTISPAN","name":"EG03FDLB240A","sku":"","sysQty":24},{"id":"p0740","brand":"MULTISPAN","name":"EG03FDLG024C","sku":"","sysQty":89},{"id":"p0741","brand":"MULTISPAN","name":"EG03FDLG240A","sku":"","sysQty":20},{"id":"p0742","brand":"MULTISPAN","name":"EG03FDLR024C","sku":"","sysQty":65},{"id":"p0743","brand":"MULTISPAN","name":"EG03FDLR240A","sku":"","sysQty":267},{"id":"p0744","brand":"MULTISPAN","name":"EG03FDLY024C","sku":"","sysQty":100},{"id":"p0745","brand":"MULTISPAN","name":"EG03FDLY240A","sku":"","sysQty":30},{"id":"p0746","brand":"MULTISPAN","name":"EG03SKLG024C","sku":"","sysQty":80},{"id":"p0747","brand":"MULTISPAN","name":"EG03SKLG240A","sku":"","sysQty":66},{"id":"p0748","brand":"MULTISPAN","name":"EG03SKLR024C","sku":"","sysQty":50},{"id":"p0749","brand":"MULTISPAN","name":"EG03SKLR240A","sku":"","sysQty":42},{"id":"p0750","brand":"MULTISPAN","name":"EG03SKLY240A","sku":"","sysQty":26},{"id":"p0751","brand":"MULTISPAN","name":"EG03SLLG024C","sku":"","sysQty":34},{"id":"p0752","brand":"MULTISPAN","name":"EG03SLLG240A","sku":"","sysQty":19},{"id":"p0753","brand":"MULTISPAN","name":"EG03SLLR024C","sku":"","sysQty":50},{"id":"p0754","brand":"MULTISPAN","name":"EG03SLLR240A","sku":"","sysQty":50},{"id":"p0755","brand":"MULTISPAN","name":"EG03SRLG024C","sku":"","sysQty":30},{"id":"p0756","brand":"MULTISPAN","name":"EG15R00C024C","sku":"","sysQty":8},{"id":"p0757","brand":"MULTISPAN","name":"EG15R00C240A","sku":"","sysQty":17},{"id":"p0758","brand":"MULTISPAN","name":"EILA024C","sku":"","sysQty":17},{"id":"p0759","brand":"MULTISPAN","name":"EILB240A","sku":"","sysQty":8},{"id":"p0760","brand":"MULTISPAN","name":"EILG024C","sku":"","sysQty":13},{"id":"p0761","brand":"MULTISPAN","name":"EILR024C","sku":"","sysQty":20},{"id":"p0762","brand":"MULTISPAN","name":"EILW024C","sku":"","sysQty":1},{"id":"p0763","brand":"MULTISPAN","name":"EILY024C","sku":"","sysQty":7},{"id":"p0764","brand":"MULTISPAN","name":"EILY240A","sku":"","sysQty":4},{"id":"p0765","brand":"MULTISPAN","name":"EMNAFD1","sku":"","sysQty":50},{"id":"p0766","brand":"MULTISPAN","name":"EMNBFD1","sku":"","sysQty":100},{"id":"p0767","brand":"MULTISPAN","name":"EMNCFD1","sku":"","sysQty":107},{"id":"p0768","brand":"MULTISPAN","name":"EMNCKK1","sku":"","sysQty":18},{"id":"p0769","brand":"MULTISPAN","name":"EMNCKL1","sku":"","sysQty":44},{"id":"p0770","brand":"MULTISPAN","name":"EMNCMD1","sku":"","sysQty":5},{"id":"p0771","brand":"MULTISPAN","name":"EMNCSJ1","sku":"","sysQty":65},{"id":"p0772","brand":"MULTISPAN","name":"EMNCSK1","sku":"","sysQty":45},{"id":"p0773","brand":"MULTISPAN","name":"EMNCSL1","sku":"","sysQty":26},{"id":"p0774","brand":"MULTISPAN","name":"EMNCSM1","sku":"","sysQty":5},{"id":"p0775","brand":"MULTISPAN","name":"EMNCSR1","sku":"","sysQty":3},{"id":"p0776","brand":"MULTISPAN","name":"EMNGFD1","sku":"","sysQty":62},{"id":"p0777","brand":"MULTISPAN","name":"EMNGMD1","sku":"","sysQty":10},{"id":"p0778","brand":"MULTISPAN","name":"EMNGSK1","sku":"","sysQty":21},{"id":"p0779","brand":"MULTISPAN","name":"EMNGSR1","sku":"","sysQty":50},{"id":"p0780","brand":"MULTISPAN","name":"EMNRFD1","sku":"","sysQty":85},{"id":"p0781","brand":"MULTISPAN","name":"EMNRMD1","sku":"","sysQty":35},{"id":"p0782","brand":"MULTISPAN","name":"EMNRMH1","sku":"","sysQty":118},{"id":"p0783","brand":"MULTISPAN","name":"EMNRSK1","sku":"","sysQty":29},{"id":"p0784","brand":"MULTISPAN","name":"EMNRSL1","sku":"","sysQty":41},{"id":"p0785","brand":"MULTISPAN","name":"EMNYFD1","sku":"","sysQty":90},{"id":"p0786","brand":"MULTISPAN","name":"EMNYMD1","sku":"","sysQty":28},{"id":"p0787","brand":"MULTISPAN","name":"EPLA024C","sku":"","sysQty":58},{"id":"p0788","brand":"MULTISPAN","name":"EPLA240A","sku":"","sysQty":46},{"id":"p0789","brand":"MULTISPAN","name":"EPLB024C","sku":"","sysQty":48},{"id":"p0790","brand":"MULTISPAN","name":"EPLB240A","sku":"","sysQty":79},{"id":"p0791","brand":"MULTISPAN","name":"EPLG024C","sku":"","sysQty":139},{"id":"p0792","brand":"MULTISPAN","name":"EPLG240A","sku":"","sysQty":145},{"id":"p0793","brand":"MULTISPAN","name":"EPLR024C","sku":"","sysQty":66},{"id":"p0794","brand":"MULTISPAN","name":"EPLR110A","sku":"","sysQty":24},{"id":"p0795","brand":"MULTISPAN","name":"EPLR240A","sku":"","sysQty":30},{"id":"p0796","brand":"MULTISPAN","name":"EPLW024C","sku":"","sysQty":8},{"id":"p0797","brand":"MULTISPAN","name":"EPLW110A","sku":"","sysQty":15},{"id":"p0798","brand":"MULTISPAN","name":"EPLW240A","sku":"","sysQty":3},{"id":"p0799","brand":"MULTISPAN","name":"EPLY024C","sku":"","sysQty":47},{"id":"p0800","brand":"MULTISPAN","name":"EPLY240A","sku":"","sysQty":100},{"id":"p0801","brand":"MULTISPAN","name":"ES122012A","sku":"","sysQty":6},{"id":"p0802","brand":"MULTISPAN","name":"ES5001","sku":"","sysQty":7},{"id":"p0803","brand":"MULTISPAN","name":"ES5002","sku":"","sysQty":5},{"id":"p0804","brand":"MULTISPAN","name":"ES50LA1U","sku":"","sysQty":17},{"id":"p0805","brand":"MULTISPAN","name":"ES50LA1X","sku":"","sysQty":16},{"id":"p0806","brand":"MULTISPAN","name":"ES50LB1U","sku":"","sysQty":13},{"id":"p0807","brand":"MULTISPAN","name":"ES50LB1X","sku":"","sysQty":19},{"id":"p0808","brand":"MULTISPAN","name":"ES50LG1U","sku":"","sysQty":20},{"id":"p0809","brand":"MULTISPAN","name":"ES50LG1X","sku":"","sysQty":22},{"id":"p0810","brand":"MULTISPAN","name":"ES50LR1U","sku":"","sysQty":16},{"id":"p0811","brand":"MULTISPAN","name":"ES50LR1X","sku":"","sysQty":14},{"id":"p0812","brand":"MULTISPAN","name":"ES50LR2U","sku":"","sysQty":4},{"id":"p0813","brand":"MULTISPAN","name":"ES50LR3X","sku":"","sysQty":5},{"id":"p0814","brand":"MULTISPAN","name":"ES50Z1U","sku":"","sysQty":21},{"id":"p0815","brand":"MULTISPAN","name":"ES50Z1X","sku":"","sysQty":7},{"id":"p0816","brand":"MULTISPAN","name":"EWS1C01AA","sku":"","sysQty":7},{"id":"p0817","brand":"MULTISPAN","name":"EWS2C01AA","sku":"","sysQty":10},{"id":"p0818","brand":"MULTISPAN","name":"EWS3C01AA","sku":"","sysQty":3},{"id":"p0819","brand":"MULTISPAN","name":"HB135000","sku":"","sysQty":5},{"id":"p0820","brand":"MULTISPAN","name":"HC61A2","sku":"","sysQty":19},{"id":"p0821","brand":"MULTISPAN","name":"HC61B2","sku":"","sysQty":17},{"id":"p0822","brand":"MULTISPAN","name":"HF192024A","sku":"","sysQty":8},{"id":"p0823","brand":"MULTISPAN","name":"IA12M34R024D","sku":"","sysQty":17},{"id":"p0824","brand":"MULTISPAN","name":"IA12M34R240A","sku":"","sysQty":16},{"id":"p0825","brand":"MULTISPAN","name":"IC01F59C114A","sku":"","sysQty":6},{"id":"p0826","brand":"MULTISPAN","name":"IC24A03W240A","sku":"","sysQty":5},{"id":"p0827","brand":"MULTISPAN","name":"IC24A04W240A","sku":"","sysQty":12},{"id":"p0828","brand":"MULTISPAN","name":"IT512WCW2MSC240A00","sku":"","sysQty":5},{"id":"p0829","brand":"MULTISPAN","name":"IT516WCW4MGN240A0","sku":"","sysQty":1},{"id":"p0830","brand":"MULTISPAN","name":"MLASS3A1","sku":"","sysQty":30},{"id":"p0831","brand":"MULTISPAN","name":"MLASS3B2","sku":"","sysQty":61},{"id":"p0832","brand":"MULTISPAN","name":"MLASS3C4","sku":"","sysQty":3},{"id":"p0833","brand":"MULTISPAN","name":"MLPBS3C7","sku":"","sysQty":200},{"id":"p0834","brand":"MULTISPAN","name":"MLPSS3A5","sku":"","sysQty":111},{"id":"p0835","brand":"MULTISPAN","name":"MNPSS3100RD","sku":"","sysQty":3},{"id":"p0836","brand":"MULTISPAN","name":"SILG024C","sku":"","sysQty":4},{"id":"p0837","brand":"MULTISPAN","name":"SILR012C","sku":"","sysQty":5},{"id":"p0838","brand":"MULTISPAN","name":"SLMBS3D3","sku":"","sysQty":30},{"id":"p0839","brand":"MULTISPAN","name":"SLMBS3F6","sku":"","sysQty":45},{"id":"p0840","brand":"MULTISPAN","name":"SLMPBS3D1","sku":"","sysQty":12},{"id":"p0841","brand":"MULTISPAN","name":"SLMPBS3F5","sku":"","sysQty":54},{"id":"p0842","brand":"MULTISPAN","name":"SLMPBS3M4","sku":"","sysQty":12},{"id":"p0843","brand":"MULTISPAN","name":"SLMSBS3B4","sku":"","sysQty":7},{"id":"p0844","brand":"MULTISPAN","name":"SLPBS3B4","sku":"","sysQty":10},{"id":"p0845","brand":"MULTISPAN","name":"SLPBS3F5","sku":"","sysQty":9},{"id":"p0846","brand":"MULTISPAN","name":"SLPSS3RM","sku":"","sysQty":10},{"id":"p0847","brand":"MULTISPAN","name":"TW10UWDRGA10G","sku":"","sysQty":17},{"id":"p0848","brand":"MULTISPAN","name":"TW10UWDRGYZ10G","sku":"","sysQty":17},{"id":"p0849","brand":"MULTISPAN","name":"TW11UWDRGA10G","sku":"","sysQty":15},{"id":"p0850","brand":"MULTISPAN","name":"TW1TR1","sku":"","sysQty":4},{"id":"p0851","brand":"MULTISPAN","name":"TW1UR1A1G1","sku":"","sysQty":23},{"id":"p0852","brand":"MULTISPAN","name":"TW1UR1A1G1Z1","sku":"","sysQty":25},{"id":"p0853","brand":"MULTISPAN","name":"TW1UR1G1","sku":"","sysQty":17},{"id":"p0854","brand":"MULTISPAN","name":"TW1XA1","sku":"","sysQty":11},{"id":"p0855","brand":"MULTISPAN","name":"TW1XG1","sku":"","sysQty":7},{"id":"p0856","brand":"MULTISPAN","name":"TW1XR1","sku":"","sysQty":13},{"id":"p0857","brand":"MULTISPAN","name":"TW1XR1G1","sku":"","sysQty":13},{"id":"p0858","brand":"MULTISPAN","name":"TW1XR1G1A1","sku":"","sysQty":3},{"id":"p0859","brand":"MULTISPAN","name":"24AS244D6D","sku":"","sysQty":1},{"id":"p0860","brand":"MULTISPAN","name":"24BS051D1F","sku":"","sysQty":2},{"id":"p0861","brand":"MULTISPAN","name":"24BS121D2F","sku":"","sysQty":25},{"id":"p0862","brand":"MULTISPAN","name":"28A11A0","sku":"","sysQty":1},{"id":"p0863","brand":"MULTISPAN","name":"G7DDT11","sku":"","sysQty":1},{"id":"p0864","brand":"MULTISPAN","name":"G8DDT10E","sku":"","sysQty":4},{"id":"p0865","brand":"MULTISPAN","name":"G8DDT11","sku":"","sysQty":4},{"id":"p0866","brand":"MULTISPAN","name":"PC10AC3","sku":"","sysQty":1},{"id":"p0867","brand":"MULTISPAN","name":"PC10ED08001N","sku":"","sysQty":1},{"id":"p0868","brand":"MULTISPAN","name":"PC10ED16003N","sku":"","sysQty":1},{"id":"p0869","brand":"MULTISPAN","name":"HONEYWELL:PX2CG1XX002BACHX","sku":"","sysQty":1},{"id":"p0870","brand":"MULTISPAN","name":"HONEYWELL:PX2CG1XX010BACHX","sku":"","sysQty":1},{"id":"p0871","brand":"MULTISPAN","name":"HONEYWELL:PX2CG1XX010BSCHX","sku":"","sysQty":2},{"id":"p0872","brand":"MULTISPAN","name":"HONEYWELL:SZL-WL-B-A01AH","sku":"","sysQty":20},{"id":"p0873","brand":"MULTISPAN","name":"DAML-075-03-CCA-00","sku":"","sysQty":4},{"id":"p0874","brand":"MULTISPAN","name":"DAML-150-03-BB0-00","sku":"","sysQty":6},{"id":"p0875","brand":"MULTISPAN","name":"DAML-AB","sku":"","sysQty":1},{"id":"p0876","brand":"MULTISPAN","name":"DBEL-06-03-C0-0400","sku":"","sysQty":2},{"id":"p0877","brand":"MULTISPAN","name":"DBEL-06-05-C0-0400","sku":"","sysQty":2},{"id":"p0878","brand":"MULTISPAN","name":"DBEL-15-03-A0-0100","sku":"","sysQty":1},{"id":"p0879","brand":"MULTISPAN","name":"DBEL-15-03-B0-0100","sku":"","sysQty":9},{"id":"p0880","brand":"MULTISPAN","name":"DBEL-15-10-B0-0100","sku":"","sysQty":1},{"id":"p0881","brand":"MULTISPAN","name":"DBEL-AA","sku":"","sysQty":1},{"id":"p0882","brand":"MULTISPAN","name":"GD100-0R7G-S2-PV","sku":"","sysQty":5},{"id":"p0883","brand":"MULTISPAN","name":"GD100-2R2G-S2-PV","sku":"","sysQty":1},{"id":"p0884","brand":"MULTISPAN","name":"GD20-2R2G-S2","sku":"","sysQty":3},{"id":"p0885","brand":"MULTISPAN","name":"GD200A-004G/5R5P-4","sku":"","sysQty":1},{"id":"p0886","brand":"MULTISPAN","name":"GD200A-011G/015P-4","sku":"","sysQty":1},{"id":"p0887","brand":"MULTISPAN","name":"GD200A-5R5G/7R5P-4","sku":"","sysQty":2},{"id":"p0888","brand":"MULTISPAN","name":"GD200A-7R5G/011P-4","sku":"","sysQty":1},{"id":"p0889","brand":"MULTISPAN","name":"IVC1L-0016ENR","sku":"","sysQty":1},{"id":"p0890","brand":"MULTISPAN","name":"IVC1L-0808ENR","sku":"","sysQty":2},{"id":"p0891","brand":"MULTISPAN","name":"IVC1L-1600ENN","sku":"","sysQty":1},{"id":"p0892","brand":"MULTISPAN","name":"SV-MM13-1R5F-2-1A0-3000","sku":"","sysQty":1},{"id":"p0893","brand":"MULTISPAN","name":"VS-070-1614MDR1","sku":"","sysQty":1},{"id":"p0894","brand":"MULTISPAN","name":"A7-MP1-100","sku":"","sysQty":6},{"id":"p0895","brand":"MULTISPAN","name":"A7-MP1-250","sku":"","sysQty":1},{"id":"p0896","brand":"MULTISPAN","name":"A7-V1-DS-G-T","sku":"","sysQty":2},{"id":"p0897","brand":"MULTISPAN","name":"A7-V1-DS-O-T","sku":"","sysQty":1},{"id":"p0898","brand":"MULTISPAN","name":"A7-V1-DS-W-T","sku":"","sysQty":2},{"id":"p0899","brand":"MULTISPAN","name":"DCR55M2/R2","sku":"","sysQty":1},{"id":"p0900","brand":"MULTISPAN","name":"EC D08-32-D08-A (50141937)","sku":"","sysQty":19},{"id":"p0901","brand":"MULTISPAN","name":"EC D10-32-D10-A (50141940)","sku":"","sysQty":13},{"id":"p0902","brand":"MULTISPAN","name":"EI 1058 S08X20C-0500H-020A","sku":"","sysQty":2},{"id":"p0903","brand":"MULTISPAN","name":"HT5.1/2 50129399","sku":"","sysQty":2},{"id":"p0904","brand":"MULTISPAN","name":"K-D M8W-4P-10m-FAB","sku":"","sysQty":3},{"id":"p0905","brand":"MULTISPAN","name":"KD 095-4A","sku":"","sysQty":10},{"id":"p0906","brand":"MULTISPAN","name":"KD U-M12-5A-V1-050","sku":"","sysQty":7},{"id":"p0907","brand":"MULTISPAN","name":"KD U-M8-4A-V1-020","sku":"","sysQty":1},{"id":"p0908","brand":"MULTISPAN","name":"KFX-ET-620","sku":"","sysQty":1},{"id":"p0909","brand":"MULTISPAN","name":"KRT18BM.V3/G6X-M12","sku":"","sysQty":6},{"id":"p0910","brand":"MULTISPAN","name":"LSL 01 01 R A G B W PLE","sku":"","sysQty":4},{"id":"p0911","brand":"MULTISPAN","name":"LSL 01 01 R","sku":"","sysQty":1},{"id":"p0912","brand":"MULTISPAN","name":"LSL 03 01 RAGPB","sku":"","sysQty":20},{"id":"p0913","brand":"MULTISPAN","name":"MISC:1OP-CW","sku":"","sysQty":1},{"id":"p0914","brand":"MULTISPAN","name":"MISC:GREEN INDICATOR","sku":"","sysQty":97},{"id":"p0915","brand":"MULTISPAN","name":"MISC:K0125","sku":"","sysQty":10},{"id":"p0916","brand":"MULTISPAN","name":"MISC:M12 FEMALE 0\ufffd PUR 8x0,25 GRAY, drag ch 10m","sku":"","sysQty":20},{"id":"p0917","brand":"MULTISPAN","name":"AMP-19-B1-00","sku":"","sysQty":15},{"id":"p0918","brand":"MULTISPAN","name":"MISC:PCFS-1","sku":"","sysQty":1},{"id":"p0919","brand":"MULTISPAN","name":"MISC:RED INDICATOR","sku":"","sysQty":78},{"id":"p0920","brand":"MULTISPAN","name":"MISC:YELLOW INDICATOR","sku":"","sysQty":100},{"id":"p0921","brand":"MULTISPAN","name":"AMP-19-B1-08","sku":"","sysQty":1},{"id":"p0922","brand":"MULTISPAN","name":"AMP-19-E3-00-R","sku":"","sysQty":10},{"id":"p0923","brand":"MULTISPAN","name":"AMP-23","sku":"","sysQty":7},{"id":"p0924","brand":"MULTISPAN","name":"AV-11A (30A CT)","sku":"","sysQty":10},{"id":"p0925","brand":"MULTISPAN","name":"AV-11V-E3-00-R","sku":"","sysQty":24},{"id":"p0926","brand":"MULTISPAN","name":"AV-12-B1-00","sku":"","sysQty":12},{"id":"p0927","brand":"MULTISPAN","name":"AV-14","sku":"","sysQty":32},{"id":"p0928","brand":"MULTISPAN","name":"AV-14DV-E3-00","sku":"","sysQty":10},{"id":"p0929","brand":"MULTISPAN","name":"AV-14DZ","sku":"","sysQty":10},{"id":"p0930","brand":"MULTISPAN","name":"AV-21V","sku":"","sysQty":21},{"id":"p0931","brand":"MULTISPAN","name":"AV-22-B1-00","sku":"","sysQty":32},{"id":"p0932","brand":"MULTISPAN","name":"AV-22-E3-01","sku":"","sysQty":35},{"id":"p0933","brand":"MULTISPAN","name":"AV-24-B1-00-R","sku":"","sysQty":16},{"id":"p0934","brand":"MULTISPAN","name":"AV-24DV-E3-04","sku":"","sysQty":2},{"id":"p0935","brand":"MULTISPAN","name":"AV-31A-B1-00","sku":"","sysQty":6},{"id":"p0936","brand":"MULTISPAN","name":"AV-31V-A2-00","sku":"","sysQty":15},{"id":"p0937","brand":"MULTISPAN","name":"AV-33-B1-00","sku":"","sysQty":11},{"id":"p0938","brand":"MULTISPAN","name":"AV-34-B1-00","sku":"","sysQty":12},{"id":"p0939","brand":"MULTISPAN","name":"AV-34DV-E3-00","sku":"","sysQty":16},{"id":"p0940","brand":"MULTISPAN","name":"AV-41A","sku":"","sysQty":5},{"id":"p0941","brand":"MULTISPAN","name":"AV-41CT-B1-00","sku":"","sysQty":18},{"id":"p0942","brand":"MULTISPAN","name":"AV-41V-A2-00","sku":"","sysQty":18},{"id":"p0943","brand":"MULTISPAN","name":"AV-44-A2-00","sku":"","sysQty":9},{"id":"p0944","brand":"MULTISPAN","name":"AVF-133-E3-06","sku":"","sysQty":2},{"id":"p0945","brand":"MULTISPAN","name":"AVF-19D-B1-N1","sku":"","sysQty":61},{"id":"p0946","brand":"MULTISPAN","name":"AVF-19D-B1-N6","sku":"","sysQty":60},{"id":"p0947","brand":"MULTISPAN","name":"AVF-19D-B1-N8","sku":"","sysQty":23},{"id":"p0948","brand":"MULTISPAN","name":"AVF-29T-A2-07","sku":"","sysQty":14},{"id":"p0949","brand":"MULTISPAN","name":"AVF-29T-A2-08 (125A CT)","sku":"","sysQty":9},{"id":"p0950","brand":"MULTISPAN","name":"AVF-29T-E3-00","sku":"","sysQty":19},{"id":"p0951","brand":"MULTISPAN","name":"AVF-29T-E3-00 (30A CT)","sku":"","sysQty":11},{"id":"p0952","brand":"MULTISPAN","name":"AVH-14-A2-01-32","sku":"","sysQty":3},{"id":"p0953","brand":"MULTISPAN","name":"AVH-14-E3-N1","sku":"","sysQty":6},{"id":"p0954","brand":"MULTISPAN","name":"AVH-14-E3-N2","sku":"","sysQty":27},{"id":"p0955","brand":"MULTISPAN","name":"AVH-14-E3-N4","sku":"","sysQty":10},{"id":"p0956","brand":"MULTISPAN","name":"AVH-14-M1-E3-N1","sku":"","sysQty":31},{"id":"p0957","brand":"MULTISPAN","name":"BC-1046D","sku":"","sysQty":7},{"id":"p0958","brand":"MULTISPAN","name":"BC-2046-A2-00","sku":"","sysQty":5},{"id":"p0959","brand":"MULTISPAN","name":"CBCT 120P-M","sku":"","sysQty":5},{"id":"p0960","brand":"MULTISPAN","name":"CC-12-A2-N1","sku":"","sysQty":11},{"id":"p0961","brand":"MULTISPAN","name":"CC-5020N-B1-00-W","sku":"","sysQty":18},{"id":"p0962","brand":"MULTISPAN","name":"CC-510-B1-00-W","sku":"","sysQty":10},{"id":"p0963","brand":"MULTISPAN","name":"CC-512-B1-01-W","sku":"","sysQty":4},{"id":"p0964","brand":"MULTISPAN","name":"CC-512-D1-01-W","sku":"","sysQty":28},{"id":"p0965","brand":"MULTISPAN","name":"CC-520-B1-00-R","sku":"","sysQty":26},{"id":"p0966","brand":"MULTISPAN","name":"CC-520-B1-01-W-BL","sku":"","sysQty":100},{"id":"p0967","brand":"MULTISPAN","name":"CC-520T","sku":"","sysQty":7},{"id":"p0968","brand":"MULTISPAN","name":"CMS-01X","sku":"","sysQty":29},{"id":"p0969","brand":"MULTISPAN","name":"CMS-5X-01","sku":"","sysQty":7},{"id":"p0970","brand":"MULTISPAN","name":"CMT-1022","sku":"","sysQty":1},{"id":"p0971","brand":"MULTISPAN","name":"CMT-1044-A2-00","sku":"","sysQty":12},{"id":"p0972","brand":"MULTISPAN","name":"CPR-126-1C-A2-00","sku":"","sysQty":4},{"id":"p0973","brand":"MULTISPAN","name":"CPR-126-A2-00","sku":"","sysQty":11},{"id":"p0974","brand":"MULTISPAN","name":"CPR-30-3P","sku":"","sysQty":1},{"id":"p0975","brand":"MULTISPAN","name":"CPR-35","sku":"","sysQty":13},{"id":"p0976","brand":"MULTISPAN","name":"CT-3000-A2-03","sku":"","sysQty":31},{"id":"p0977","brand":"MULTISPAN","name":"CT-5000","sku":"","sysQty":8},{"id":"p0978","brand":"MULTISPAN","name":"CT-5000-A2-03","sku":"","sysQty":5},{"id":"p0979","brand":"MULTISPAN","name":"CT-5000-A2-03 (Black)","sku":"","sysQty":5},{"id":"p0980","brand":"MULTISPAN","name":"CTR-63-E3-A","sku":"","sysQty":11},{"id":"p0981","brand":"MULTISPAN","name":"CTR-63-E3-A-01","sku":"","sysQty":2},{"id":"p0982","brand":"MULTISPAN","name":"CTR-63-E3-V","sku":"","sysQty":6},{"id":"p0983","brand":"MULTISPAN","name":"CYL-22U","sku":"","sysQty":41},{"id":"p0984","brand":"MULTISPAN","name":"WLC-22-A2-01","sku":"","sysQty":11},{"id":"p0985","brand":"MULTISPAN","name":"E2B-M18KS08-WP-B1","sku":"","sysQty":1},{"id":"p0986","brand":"MULTISPAN","name":"F39-JD7A-D","sku":"","sysQty":1},{"id":"p0987","brand":"MULTISPAN","name":"G2R-2-SN AC 230","sku":"","sysQty":108},{"id":"p0988","brand":"MULTISPAN","name":"G2R-2-SN DC 24","sku":"","sysQty":110},{"id":"p0989","brand":"MULTISPAN","name":"MY2N-GS  AC220/240","sku":"","sysQty":125},{"id":"p0990","brand":"MULTISPAN","name":"MY2N-GS  DC24","sku":"","sysQty":185},{"id":"p0991","brand":"MULTISPAN","name":"MY2N-GS AC100/110","sku":"","sysQty":20},{"id":"p0992","brand":"MULTISPAN","name":"MY4N-GS  DC24","sku":"","sysQty":96},{"id":"p0993","brand":"MULTISPAN","name":"MY4N-GS AC220/240","sku":"","sysQty":89},{"id":"p0994","brand":"MULTISPAN","name":"P2RF-08-E","sku":"","sysQty":3},{"id":"p0995","brand":"MULTISPAN","name":"PYC-A1","sku":"","sysQty":70},{"id":"p0996","brand":"MULTISPAN","name":"PYF08A-N","sku":"","sysQty":178},{"id":"p0997","brand":"MULTISPAN","name":"S82Y-FSC050D IN","sku":"","sysQty":13},{"id":"p0998","brand":"MULTISPAN","name":"S82Y-FSC150D IN","sku":"","sysQty":10},{"id":"p0999","brand":"MULTISPAN","name":"S82Y-FSC350D IN","sku":"","sysQty":14},{"id":"p1000","brand":"MULTISPAN","name":"S8FS-C05024","sku":"","sysQty":42},{"id":"p1001","brand":"MULTISPAN","name":"S8FS-C10024J","sku":"","sysQty":90},{"id":"p1002","brand":"MULTISPAN","name":"S8FS-C15024J","sku":"","sysQty":24},{"id":"p1003","brand":"MULTISPAN","name":"S8VK-C06024","sku":"","sysQty":42},{"id":"p1004","brand":"MULTISPAN","name":"S8VK-C12024","sku":"","sysQty":88},{"id":"p1005","brand":"MULTISPAN","name":"S8VK-C24024","sku":"","sysQty":24},{"id":"p1006","brand":"MULTISPAN","name":"S8VK-C48024","sku":"","sysQty":1},{"id":"p1007","brand":"MULTISPAN","name":"Programming Cable","sku":"","sysQty":11},{"id":"p1008","brand":"MULTISPAN","name":"CR10000400000210","sku":"","sysQty":12},{"id":"p1009","brand":"MULTISPAN","name":"CR30000700000420","sku":"","sysQty":10},{"id":"p1010","brand":"MULTISPAN","name":"CR30001000000420","sku":"","sysQty":1},{"id":"p1011","brand":"MULTISPAN","name":"CSPID2S0","sku":"","sysQty":2},{"id":"p1012","brand":"MULTISPAN","name":"CUB5PB00","sku":"","sysQty":4},{"id":"p1013","brand":"MULTISPAN","name":"G07C0000","sku":"","sysQty":61},{"id":"p1014","brand":"MULTISPAN","name":"PAX2A000","sku":"","sysQty":15},{"id":"p1015","brand":"MULTISPAN","name":"PAXCDC50","sku":"","sysQty":1},{"id":"p1016","brand":"MULTISPAN","name":"PAXCDS20","sku":"","sysQty":20},{"id":"p1017","brand":"MULTISPAN","name":"PAXS0000","sku":"","sysQty":32},{"id":"p1018","brand":"MULTISPAN","name":"PAXS0010","sku":"","sysQty":17},{"id":"p1019","brand":"MULTISPAN","name":"PTV00000","sku":"","sysQty":2},{"id":"p1020","brand":"MULTISPAN","name":"SL-5ES-1","sku":"","sysQty":7},{"id":"p1021","brand":"MULTISPAN","name":"FIOA-0402-U-B","sku":"","sysQty":1},{"id":"p1022","brand":"MULTISPAN","name":"FL004-0806R-V2","sku":"","sysQty":2},{"id":"p1023","brand":"MULTISPAN","name":"FLD0016R","sku":"","sysQty":1},{"id":"p1024","brand":"MULTISPAN","name":"FLD1600","sku":"","sysQty":1},{"id":"p1025","brand":"MULTISPAN","name":"FP2043T","sku":"","sysQty":1},{"id":"p1026","brand":"MULTISPAN","name":"FPEM-0808RP-A0401U-V2","sku":"","sysQty":5},{"id":"p1027","brand":"MULTISPAN","name":"ACC-PWR-TB-M6-2","sku":"","sysQty":1},{"id":"p1028","brand":"MULTISPAN","name":"KA-0904 (101207728)","sku":"","sysQty":1},{"id":"p1029","brand":"MULTISPAN","name":"A-K4P-M12-S-G-5M-BK-1-X-A-1","sku":"","sysQty":30},{"id":"p1030","brand":"MULTISPAN","name":"A-K5P-M12-S-G-5M-BK-1-X-A-1","sku":"","sysQty":24},{"id":"p1031","brand":"MULTISPAN","name":"A-K6P-M8-R-G-5M-GY-1-X-4/M8S-6P-5M","sku":"","sysQty":2},{"id":"p1032","brand":"MULTISPAN","name":"A-K8P-M8-S-G-2M-BK-2-X-A-4","sku":"","sysQty":5},{"id":"p1033","brand":"MULTISPAN","name":"A-K8P-M8-S-G-5M-BK-2-X-A-4","sku":"","sysQty":1},{"id":"p1034","brand":"MULTISPAN","name":"ACC-PWR-PLY-S","sku":"","sysQty":1},{"id":"p1035","brand":"MULTISPAN","name":"ACC-PWR-WT-5MM-NIRO","sku":"","sysQty":62},{"id":"p1036","brand":"MULTISPAN","name":"AZ15/16-B1 CPL","sku":"","sysQty":202},{"id":"p1037","brand":"MULTISPAN","name":"AZ15/16-B1-1747 Retrofit","sku":"","sysQty":2},{"id":"p1038","brand":"MULTISPAN","name":"AZ15/16-B1-2053 CPL","sku":"","sysQty":25},{"id":"p1039","brand":"MULTISPAN","name":"AZ15/16-B2 CPL","sku":"","sysQty":6},{"id":"p1040","brand":"MULTISPAN","name":"AZ15/16-B6 KPL","sku":"","sysQty":91},{"id":"p1041","brand":"MULTISPAN","name":"AZ15ZVRK-M20","sku":"","sysQty":1},{"id":"p1042","brand":"MULTISPAN","name":"AZ15ZVRK-M16-1762","sku":"","sysQty":2},{"id":"p1043","brand":"MULTISPAN","name":"AZ16-12ZVRK-M16","sku":"","sysQty":45},{"id":"p1044","brand":"MULTISPAN","name":"AZ16-12ZVRK-M20","sku":"","sysQty":94},{"id":"p1045","brand":"MULTISPAN","name":"AZ17-02ZRK","sku":"","sysQty":15},{"id":"p1046","brand":"MULTISPAN","name":"AZ17-11ZK","sku":"","sysQty":52},{"id":"p1047","brand":"MULTISPAN","name":"AZ17-11ZRK","sku":"","sysQty":6},{"id":"p1048","brand":"MULTISPAN","name":"AZ17-B6","sku":"","sysQty":23},{"id":"p1049","brand":"MULTISPAN","name":"AZ17/170-B1","sku":"","sysQty":28},{"id":"p1050","brand":"MULTISPAN","name":"AZ17/170-B5","sku":"","sysQty":3},{"id":"p1051","brand":"MULTISPAN","name":"AZ415-11/11ZPK-M20","sku":"","sysQty":4},{"id":"p1052","brand":"MULTISPAN","name":"AZ415-STS30-05","sku":"","sysQty":4},{"id":"p1053","brand":"MULTISPAN","name":"AZM150-B1","sku":"","sysQty":4},{"id":"p1054","brand":"MULTISPAN","name":"AZM150-B6","sku":"","sysQty":32},{"id":"p1055","brand":"MULTISPAN","name":"AZM161SK-12/12RK-M16-24V","sku":"","sysQty":3},{"id":"p1056","brand":"MULTISPAN","name":"AZM17/170-B5","sku":"","sysQty":2},{"id":"p1057","brand":"MULTISPAN","name":"AZM170-02ZRK-24VAC/DC","sku":"","sysQty":2},{"id":"p1058","brand":"MULTISPAN","name":"AZM170-B6","sku":"","sysQty":16},{"id":"p1059","brand":"MULTISPAN","name":"AZM170SK-11/02ZRKA-24VAC/DC","sku":"","sysQty":3},{"id":"p1060","brand":"MULTISPAN","name":"BN20-RZ-M16","sku":"","sysQty":1},{"id":"p1061","brand":"MULTISPAN","name":"BNS36-11/01Z-L","sku":"","sysQty":1},{"id":"p1062","brand":"MULTISPAN","name":"BP20-N","sku":"","sysQty":1},{"id":"p1063","brand":"MULTISPAN","name":"BPS260-1","sku":"","sysQty":64},{"id":"p1064","brand":"MULTISPAN","name":"BPS33","sku":"","sysQty":26},{"id":"p1065","brand":"MULTISPAN","name":"BPS36-1","sku":"","sysQty":10},{"id":"p1066","brand":"MULTISPAN","name":"FWS 1205C 24VDC","sku":"","sysQty":1},{"id":"p1067","brand":"MULTISPAN","name":"MBK311-YE-ADRR40RT-2NC","sku":"","sysQty":26},{"id":"p1068","brand":"MULTISPAN","name":"MP-AZ415","sku":"","sysQty":5},{"id":"p1069","brand":"MULTISPAN","name":"MR330-11Y-M20-1366","sku":"","sysQty":1},{"id":"p1070","brand":"MULTISPAN","name":"MS-AZM170 R/P","sku":"","sysQty":9},{"id":"p1071","brand":"MULTISPAN","name":"RSS36-I2-D-ST","sku":"","sysQty":10},{"id":"p1072","brand":"MULTISPAN","name":"RST260-1","sku":"","sysQty":6},{"id":"p1073","brand":"MULTISPAN","name":"RST36-1","sku":"","sysQty":22},{"id":"p1074","brand":"MULTISPAN","name":"Schmersal Risk Assessment- Duplicate","sku":"","sysQty":1},{"id":"p1075","brand":"MULTISPAN","name":"SE-AL20-1250","sku":"","sysQty":1},{"id":"p1076","brand":"MULTISPAN","name":"SE-P70-1250","sku":"","sysQty":1},{"id":"p1077","brand":"MULTISPAN","name":"SEP01.0.4.S.0.22/E1-137000274","sku":"","sysQty":1},{"id":"p1078","brand":"MULTISPAN","name":"SLC440COM-ER-0330-35-1700","sku":"","sysQty":10},{"id":"p1079","brand":"MULTISPAN","name":"SLC440COM-ER-0410-35-1700","sku":"","sysQty":1},{"id":"p1080","brand":"MULTISPAN","name":"SLC440COM-ER-0570-35-1700","sku":"","sysQty":2},{"id":"p1081","brand":"MULTISPAN","name":"SLC440COM-ER-0890-35-1700","sku":"","sysQty":4},{"id":"p1082","brand":"MULTISPAN","name":"SRB-E-402ST","sku":"","sysQty":1},{"id":"p1083","brand":"MULTISPAN","name":"SZ415-1","sku":"","sysQty":4},{"id":"p1084","brand":"MULTISPAN","name":"ACC-RS65X-TS - 133032772","sku":"","sysQty":21},{"id":"p1085","brand":"MULTISPAN","name":"M6-Tensioning Jack","sku":"","sysQty":38},{"id":"p1086","brand":"MULTISPAN","name":"TFA-010","sku":"","sysQty":4},{"id":"p1087","brand":"MULTISPAN","name":"TK-M5","sku":"","sysQty":4},{"id":"p1088","brand":"MULTISPAN","name":"TR335-12Z-M20","sku":"","sysQty":2},{"id":"p1089","brand":"MULTISPAN","name":"TR235-11Z-M20","sku":"","sysQty":1},{"id":"p1090","brand":"MULTISPAN","name":"TRC-461-12Z","sku":"","sysQty":2},{"id":"p1091","brand":"MULTISPAN","name":"TS232-11-I-2888","sku":"","sysQty":975},{"id":"p1092","brand":"MULTISPAN","name":"TZ-69 M3 (KEY)","sku":"","sysQty":3},{"id":"p1093","brand":"MULTISPAN","name":"TZ/CO","sku":"","sysQty":15},{"id":"p1094","brand":"MULTISPAN","name":"TZ/COF/HIS.1","sku":"","sysQty":6},{"id":"p1095","brand":"MULTISPAN","name":"TZFCWS24VDC-2917","sku":"","sysQty":8},{"id":"p1096","brand":"MULTISPAN","name":"Validation Post Risk Assessment- Duplicate","sku":"","sysQty":1},{"id":"p1097","brand":"MULTISPAN","name":"ZQ700-11","sku":"","sysQty":9},{"id":"p1098","brand":"MULTISPAN","name":"ZQ900-11","sku":"","sysQty":1},{"id":"p1099","brand":"MULTISPAN","name":"ZQ900-11-N","sku":"","sysQty":2},{"id":"p1100","brand":"MULTISPAN","name":"ZQ900-22N","sku":"","sysQty":2},{"id":"p1101","brand":"MULTISPAN","name":"ZQ900-22","sku":"","sysQty":6},{"id":"p1102","brand":"MULTISPAN","name":"ZS236-11Z-M20","sku":"","sysQty":3},{"id":"p1103","brand":"MULTISPAN","name":"ZS235-11Z-M20","sku":"","sysQty":1},{"id":"p1104","brand":"MULTISPAN","name":"Schneider:MCB 4P-C-20A 10KA","sku":"","sysQty":1},{"id":"p1105","brand":"MULTISPAN","name":"SLC440COM-ER-0330-14-1700","sku":"","sysQty":10},{"id":"p1106","brand":"MULTISPAN","name":"101 ZDA 60 40 01 AL5","sku":"","sysQty":100},{"id":"p1107","brand":"MULTISPAN","name":"102 ZDA 48 16/16 00","sku":"","sysQty":1},{"id":"p1108","brand":"MULTISPAN","name":"102 ZDA 60 40/40 01","sku":"","sysQty":16},{"id":"p1109","brand":"MULTISPAN","name":"703 ZDA 33 03 00","sku":"","sysQty":11},{"id":"p1110","brand":"MULTISPAN","name":"703 ZDA 48 05 00","sku":"","sysQty":180},{"id":"p1111","brand":"MULTISPAN","name":"704-B ZDA 48 05 00","sku":"","sysQty":10},{"id":"p1112","brand":"MULTISPAN","name":"801 3PH ZDA 48 25 18","sku":"","sysQty":11},{"id":"p1113","brand":"MULTISPAN","name":"801 NO/NC DA 33 25 00","sku":"","sysQty":4},{"id":"p1114","brand":"MULTISPAN","name":"801 PMDD 55 100 00","sku":"","sysQty":2},{"id":"p1115","brand":"MULTISPAN","name":"802 PMDD 100 06 00","sku":"","sysQty":215},{"id":"p1116","brand":"MULTISPAN","name":"802 SSR SOCKET","sku":"","sysQty":204},{"id":"p1117","brand":"MULTISPAN","name":"802 ZDA 33 06 00","sku":"","sysQty":105},{"id":"p1118","brand":"MULTISPAN","name":"803 PHT 24 200 420","sku":"","sysQty":7},{"id":"p1119","brand":"MULTISPAN","name":"803 PHT 24 25 420","sku":"","sysQty":128},{"id":"p1120","brand":"MULTISPAN","name":"803 PHT 24 50 420","sku":"","sysQty":18},{"id":"p1121","brand":"MULTISPAN","name":"803 PHT 24 90 420","sku":"","sysQty":9},{"id":"p1122","brand":"MULTISPAN","name":"803 PHT 44 50 420","sku":"","sysQty":5},{"id":"p1123","brand":"MULTISPAN","name":"803 PMDD 55 35 00","sku":"","sysQty":30},{"id":"p1124","brand":"MULTISPAN","name":"803 ZAA 48 25 26","sku":"","sysQty":28},{"id":"p1125","brand":"MULTISPAN","name":"803 ZAA 58 50 26","sku":"","sysQty":48},{"id":"p1126","brand":"MULTISPAN","name":"803 ZAA 58 90 26","sku":"","sysQty":4},{"id":"p1127","brand":"MULTISPAN","name":"803 ZDA 48 25 01","sku":"","sysQty":214},{"id":"p1128","brand":"MULTISPAN","name":"803 ZDA 55 40 01","sku":"","sysQty":115},{"id":"p1129","brand":"MULTISPAN","name":"803 ZDA 58 200 01","sku":"","sysQty":12},{"id":"p1130","brand":"MULTISPAN","name":"803 ZDA 58 90 01","sku":"","sysQty":66},{"id":"p1131","brand":"MULTISPAN","name":"805 3PH ZUA 48 16 02","sku":"","sysQty":4},{"id":"p1132","brand":"MULTISPAN","name":"806 PMDD 100 05 41","sku":"","sysQty":83},{"id":"p1133","brand":"MULTISPAN","name":"806 ZDA 48 05 41","sku":"","sysQty":14},{"id":"p1134","brand":"MULTISPAN","name":"807 PMDD 100 08 01","sku":"","sysQty":87},{"id":"p1135","brand":"MULTISPAN","name":"901 MCBUR 60 200 420 CU2 4S","sku":"","sysQty":36},{"id":"p1136","brand":"MULTISPAN","name":"901 MCBUR 60 50 420 AL5 4S","sku":"","sysQty":125},{"id":"p1137","brand":"MULTISPAN","name":"901 MCBUR 60 90 010 CU2 1S","sku":"","sysQty":15},{"id":"p1138","brand":"MULTISPAN","name":"901 MCBUR 60 90 420 CU2 4S","sku":"","sysQty":63},{"id":"p1139","brand":"MULTISPAN","name":"901 MCPHT 48 200 420 CU2","sku":"","sysQty":22},{"id":"p1140","brand":"MULTISPAN","name":"901 MCPHT 48 50 010 AL5","sku":"","sysQty":3},{"id":"p1141","brand":"MULTISPAN","name":"901 MCPHT 48 50 420 AL5","sku":"","sysQty":25},{"id":"p1142","brand":"MULTISPAN","name":"901 MCPHT 48 90 420 CU2","sku":"","sysQty":20},{"id":"p1143","brand":"MULTISPAN","name":"901 PHT 24 200 420 CU2","sku":"","sysQty":5},{"id":"p1144","brand":"MULTISPAN","name":"901 PHT 24 25 420 AL5","sku":"","sysQty":46},{"id":"p1145","brand":"MULTISPAN","name":"901 PHT 24 40 420 AL5","sku":"","sysQty":23},{"id":"p1146","brand":"MULTISPAN","name":"901 PHT 24 50 010 AL5","sku":"","sysQty":44},{"id":"p1147","brand":"MULTISPAN","name":"901 PHT 24 50 420 AL5","sku":"","sysQty":49},{"id":"p1148","brand":"MULTISPAN","name":"901 PHT 24 90 420 CU2","sku":"","sysQty":49},{"id":"p1149","brand":"MULTISPAN","name":"901 PHT 44 200 420 CU2","sku":"","sysQty":3},{"id":"p1150","brand":"MULTISPAN","name":"901 PHT 44 25 420 AL5","sku":"","sysQty":24},{"id":"p1151","brand":"MULTISPAN","name":"901 PHT 44 50 420 AL5","sku":"","sysQty":20},{"id":"p1152","brand":"MULTISPAN","name":"901 PHT 44 90 420 CU2","sku":"","sysQty":48},{"id":"p1153","brand":"MULTISPAN","name":"901 POT 23 25 FULL","sku":"","sysQty":6},{"id":"p1154","brand":"MULTISPAN","name":"901 POT 23 25 HALF","sku":"","sysQty":9},{"id":"p1155","brand":"MULTISPAN","name":"901 POT 23 50 FULL","sku":"","sysQty":20},{"id":"p1156","brand":"MULTISPAN","name":"901 RDA 48 25 01 AL5","sku":"","sysQty":15},{"id":"p1157","brand":"MULTISPAN","name":"901 RDA 60 50 01 AL5","sku":"","sysQty":22},{"id":"p1158","brand":"MULTISPAN","name":"901 RDA 60 90 01 CU2","sku":"","sysQty":18},{"id":"p1159","brand":"MULTISPAN","name":"901 ZAA 48 25 28 AL5","sku":"","sysQty":50},{"id":"p1160","brand":"MULTISPAN","name":"901 ZAA 48 40 28 AL5","sku":"","sysQty":44},{"id":"p1161","brand":"MULTISPAN","name":"901 ZAA 60 50 28 AL5","sku":"","sysQty":16},{"id":"p1162","brand":"MULTISPAN","name":"901 ZAA 60 90 28 CU2","sku":"","sysQty":6},{"id":"p1163","brand":"MULTISPAN","name":"901 ZDA 48 25 01 AL5","sku":"","sysQty":271},{"id":"p1164","brand":"MULTISPAN","name":"901 ZDA 60 40 01 AL5","sku":"","sysQty":175},{"id":"p1165","brand":"MULTISPAN","name":"901 ZDA 48 40 01 C56","sku":"","sysQty":4},{"id":"p1166","brand":"MULTISPAN","name":"901 ZDA 60 200 01 CU2","sku":"","sysQty":80},{"id":"p1167","brand":"MULTISPAN","name":"901 ZDA 60 50 01 AL5","sku":"","sysQty":147},{"id":"p1168","brand":"MULTISPAN","name":"901 4T POT 40 FULL","sku":"","sysQty":2},{"id":"p1169","brand":"MULTISPAN","name":"905 3FR ZDA 48 25 20","sku":"","sysQty":11},{"id":"p1170","brand":"MULTISPAN","name":"905 3PH ZAA 48 25 28","sku":"","sysQty":19},{"id":"p1171","brand":"MULTISPAN","name":"905 3PH ZAA 48 50 28","sku":"","sysQty":23},{"id":"p1172","brand":"MULTISPAN","name":"905 3PH ZDA 48 25 01","sku":"","sysQty":107},{"id":"p1173","brand":"MULTISPAN","name":"905 3PH ZDA 48 50 01","sku":"","sysQty":18},{"id":"p1174","brand":"MULTISPAN","name":"905 3PH ZUA 48 90 02","sku":"","sysQty":26},{"id":"p1175","brand":"MULTISPAN","name":"905 OPEN 23 25 010 HALF","sku":"","sysQty":8},{"id":"p1176","brand":"MULTISPAN","name":"909 SCDD 55 02 00 02CH","sku":"","sysQty":210},{"id":"p1177","brand":"MULTISPAN","name":"CT 0-100AMP PRO 0-10VDC WITHOUT BUFFER","sku":"","sysQty":52},{"id":"p1178","brand":"MULTISPAN","name":"CT 0-100AMP PRO 0-10VDC WITH BUFFER","sku":"","sysQty":33},{"id":"p1179","brand":"MULTISPAN","name":"CT 0-10AMP PRO 0-10VDC Without Buffer","sku":"","sysQty":39},{"id":"p1180","brand":"MULTISPAN","name":"CT 0-10AMP PRO 0-10VDC WITH BUFFER","sku":"","sysQty":70},{"id":"p1181","brand":"MULTISPAN","name":"CT 0-150 AMP PRO 0-10VDC WITHOUT BUFFER","sku":"","sysQty":20},{"id":"p1182","brand":"MULTISPAN","name":"CT 0-50AMP PRO 0-10VDC  WITHOUT BUFFER","sku":"","sysQty":89},{"id":"p1183","brand":"MULTISPAN","name":"CT 0-50AMP PRO 0-10VDC WITH BUFFER","sku":"","sysQty":6},{"id":"p1184","brand":"MULTISPAN","name":"HEAT SINK C-56 + DIN","sku":"","sysQty":8},{"id":"p1185","brand":"MULTISPAN","name":"DIN RAIL 42MM","sku":"","sysQty":221},{"id":"p1186","brand":"MULTISPAN","name":"HEAT SINK ' E-68' + DIN","sku":"","sysQty":268},{"id":"p1187","brand":"MULTISPAN","name":"HEAT SINK ' E-75' + DIN","sku":"","sysQty":177},{"id":"p1188","brand":"MULTISPAN","name":"HEAT SINK 'A-100' + DIN","sku":"","sysQty":99},{"id":"p1189","brand":"MULTISPAN","name":"HEAT SINK 'A-190' WITH FAN","sku":"","sysQty":10},{"id":"p1190","brand":"MULTISPAN","name":"HEAT SINK 'A-190' WITHOUT FAN","sku":"","sysQty":6},{"id":"p1191","brand":"MULTISPAN","name":"HEAT SINK 'A-285' WITH FAN","sku":"","sysQty":6},{"id":"p1192","brand":"MULTISPAN","name":"HEAT SINK 'B-24' + DIN","sku":"","sysQty":317},{"id":"p1193","brand":"MULTISPAN","name":"HEAT SINK 'B-48' + DIN","sku":"","sysQty":203},{"id":"p1194","brand":"MULTISPAN","name":"HEAT SINK 'B-72' + DIN","sku":"","sysQty":98},{"id":"p1195","brand":"MULTISPAN","name":"HEAT SINK 'B-96' + DIN","sku":"","sysQty":5},{"id":"p1196","brand":"MULTISPAN","name":"HEAT SINK 'G-12.5' + DIN","sku":"","sysQty":30},{"id":"p1197","brand":"MULTISPAN","name":"HEAT SINK 'G-30' + DIN","sku":"","sysQty":25},{"id":"p1198","brand":"MULTISPAN","name":"HEAT SINK 'G-68' + DIN","sku":"","sysQty":574},{"id":"p1199","brand":"MULTISPAN","name":"HEAT SINK 'V-87' + DIN","sku":"","sysQty":336},{"id":"p1200","brand":"MULTISPAN","name":"SCANNER CARD 1- 16CH","sku":"","sysQty":5},{"id":"p1201","brand":"MULTISPAN","name":"SCANNER CARD 1- 8 CH","sku":"","sysQty":17},{"id":"p1202","brand":"MULTISPAN","name":"803 PMDD 200 20 00","sku":"","sysQty":28},{"id":"p1203","brand":"MULTISPAN","name":"901 PMDD 200 20 00","sku":"","sysQty":5},{"id":"p1204","brand":"MULTISPAN","name":"901 PMDD 200 30 00","sku":"","sysQty":9},{"id":"p1205","brand":"MULTISPAN","name":"901 PMDD 85 90 00","sku":"","sysQty":6},{"id":"p1206","brand":"MULTISPAN","name":"905 3FR OLSP ZDA 48 05 01  (Heat sink E-75)","sku":"","sysQty":95},{"id":"p1207","brand":"MULTISPAN","name":"905 3FW DOLSP ZDA 48 05 01 (Heat Sink E-75)","sku":"","sysQty":180},{"id":"p1208","brand":"MULTISPAN","name":"PYF14A-N","sku":"","sysQty":14},{"id":"p1209","brand":"MULTISPAN","name":"DA-1X-D1-00","sku":"","sysQty":7},{"id":"p1210","brand":"MULTISPAN","name":"DC-24","sku":"","sysQty":2},{"id":"p1211","brand":"MULTISPAN","name":"DI-22-00","sku":"","sysQty":72},{"id":"p1212","brand":"MULTISPAN","name":"DI-22U","sku":"","sysQty":86},{"id":"p1213","brand":"MULTISPAN","name":"DPI-122-A2-02","sku":"","sysQty":10},{"id":"p1214","brand":"MULTISPAN","name":"DPI-122-A2-05","sku":"","sysQty":25},{"id":"p1215","brand":"MULTISPAN","name":"PAXT0000","sku":"","sysQty":10},{"id":"p1216","brand":"MULTISPAN","name":"PAXCDL10","sku":"","sysQty":33},{"id":"p1217","brand":"MULTISPAN","name":"PAXCDS10","sku":"","sysQty":20},{"id":"p1218","brand":"MULTISPAN","name":"GD10-1R5G-4-B","sku":"","sysQty":2},{"id":"p1219","brand":"MULTISPAN","name":"SV-ML08-0R7G-2-SA4-1000","sku":"","sysQty":1},{"id":"p1220","brand":"MULTISPAN","name":"DPI-122-M1-A2-05","sku":"","sysQty":6},{"id":"p1221","brand":"MULTISPAN","name":"DT-60S-B1-00","sku":"","sysQty":79},{"id":"p1222","brand":"MULTISPAN","name":"DTC-1A","sku":"","sysQty":3},{"id":"p1223","brand":"MULTISPAN","name":"PAPER PLANE DESIGN","sku":"","sysQty":1},{"id":"p1224","brand":"MULTISPAN","name":"TZFWS24VDC-2917","sku":"","sysQty":10},{"id":"p1225","brand":"MULTISPAN","name":"WALLET RECHARGE","sku":"","sysQty":2},{"id":"p1226","brand":"MULTISPAN","name":"DTT-3000","sku":"","sysQty":8},{"id":"p1227","brand":"MULTISPAN","name":"DTT-56G","sku":"","sysQty":2},{"id":"p1228","brand":"MULTISPAN","name":"ELR-19N","sku":"","sysQty":4},{"id":"p1229","brand":"MULTISPAN","name":"ELR-19N-E3-13 [CBCT]","sku":"","sysQty":2},{"id":"p1230","brand":"MULTISPAN","name":"SLPSS3LP","sku":"","sysQty":7},{"id":"p1231","brand":"MULTISPAN","name":"ELR-19N-E3-23","sku":"","sysQty":18},{"id":"p1232","brand":"MULTISPAN","name":"MY4N-GS-AC 100/110","sku":"","sysQty":4},{"id":"p1233","brand":"MULTISPAN","name":"ELR-63","sku":"","sysQty":3},{"id":"p1234","brand":"MULTISPAN","name":"DBEL-AC","sku":"","sysQty":2},{"id":"p1235","brand":"MULTISPAN","name":"VS-070HS","sku":"","sysQty":2},{"id":"p1236","brand":"MULTISPAN","name":"TW11UWDRGYZ10G","sku":"","sysQty":30},{"id":"p1237","brand":"MULTISPAN","name":"AE-04-024D-1-B-C (11100195)","sku":"","sysQty":83},{"id":"p1238","brand":"MULTISPAN","name":"AE-S-08-024D-024D-B-C (A5)","sku":"","sysQty":26},{"id":"p1239","brand":"MULTISPAN","name":"IVC1L-2TC","sku":"","sysQty":2},{"id":"p1240","brand":"MULTISPAN","name":"EM-10-M1-A2-00","sku":"","sysQty":1},{"id":"p1241","brand":"MULTISPAN","name":"EN-19N","sku":"","sysQty":5},{"id":"p1242","brand":"MULTISPAN","name":"FP4070TN","sku":"","sysQty":2},{"id":"p1243","brand":"MULTISPAN","name":"EN-63-A1-00","sku":"","sysQty":30},{"id":"p1244","brand":"MULTISPAN","name":"EPM-14-M1","sku":"","sysQty":1},{"id":"p1245","brand":"MULTISPAN","name":"101 ZDA 48 25 00 AL5","sku":"","sysQty":174},{"id":"p1246","brand":"MULTISPAN","name":"EPM-35-M1","sku":"","sysQty":9},{"id":"p1247","brand":"MULTISPAN","name":"SLC440COM-ER-0570-14-1700","sku":"","sysQty":15},{"id":"p1248","brand":"MULTISPAN","name":"IVC3-3232MAT-4","sku":"","sysQty":1},{"id":"p1249","brand":"MULTISPAN","name":"IVC-EH-1600ENN","sku":"","sysQty":2},{"id":"p1250","brand":"MULTISPAN","name":"IVC-EH-0016ENT","sku":"","sysQty":1},{"id":"p1251","brand":"MULTISPAN","name":"TW1UR3Z1","sku":"","sysQty":5},{"id":"p1252","brand":"MULTISPAN","name":"MLPBS3A3","sku":"","sysQty":20},{"id":"p1253","brand":"MULTISPAN","name":"101 PMDD 200 25 00 AL5","sku":"","sysQty":20},{"id":"p1254","brand":"MULTISPAN","name":"IS 108 MM/4NC-2E0-M8.3","sku":"","sysQty":5},{"id":"p1255","brand":"MULTISPAN","name":"IC24A03W024D","sku":"","sysQty":48},{"id":"p1256","brand":"MULTISPAN","name":"FA-11-A2-51-X1","sku":"","sysQty":9},{"id":"p1257","brand":"MULTISPAN","name":"FLT-L16-D3-00","sku":"","sysQty":2},{"id":"p1258","brand":"MULTISPAN","name":"S8FS-C35024","sku":"","sysQty":6},{"id":"p1259","brand":"MULTISPAN","name":"S900-SH Shackle","sku":"","sysQty":49},{"id":"p1260","brand":"MULTISPAN","name":"FLT-L16-E3-00","sku":"","sysQty":2},{"id":"p1261","brand":"MULTISPAN","name":"LC-2046","sku":"","sysQty":23},{"id":"p1262","brand":"MULTISPAN","name":"MC-1003-A2-00","sku":"","sysQty":2},{"id":"p1263","brand":"MULTISPAN","name":"MDT-17U","sku":"","sysQty":25},{"id":"p1264","brand":"MULTISPAN","name":"SAFETY FENCING SCHMERSAL MAKE","sku":"","sysQty":1},{"id":"p1265","brand":"MULTISPAN","name":"MDT-2312F","sku":"","sysQty":9},{"id":"p1266","brand":"MULTISPAN","name":"MFM-13-A2-04-32","sku":"","sysQty":2},{"id":"p1267","brand":"MULTISPAN","name":"VS-070QE","sku":"","sysQty":11},{"id":"p1268","brand":"MULTISPAN","name":"905 3FR OLSP ZDA 48 10 01 (Heat Sink E-75)","sku":"","sysQty":140},{"id":"p1269","brand":"MULTISPAN","name":"905 3FW DOLSP ZDA 48 10 01 BFW (Heat Sink E-75)","sku":"","sysQty":45},{"id":"p1270","brand":"MULTISPAN","name":"BNS36-02/01ZG-R-5M","sku":"","sysQty":2},{"id":"p1271","brand":"MULTISPAN","name":"MFM-13-E3-01-32","sku":"","sysQty":1},{"id":"p1272","brand":"MULTISPAN","name":"RSS36-I2-D-ST-DU","sku":"","sysQty":1},{"id":"p1273","brand":"MULTISPAN","name":"MFM-13-E3-03-32 (MFM-13-E5-00)","sku":"","sysQty":17},{"id":"p1274","brand":"MULTISPAN","name":"MFM-13-E5-00","sku":"","sysQty":7},{"id":"p1275","brand":"MULTISPAN","name":"803 FDZDA 58 40 01","sku":"","sysQty":5},{"id":"p1276","brand":"MULTISPAN","name":"IAMS0002","sku":"","sysQty":8},{"id":"p1277","brand":"MULTISPAN","name":"PAXI0030","sku":"","sysQty":10},{"id":"p1278","brand":"MULTISPAN","name":"M12X100 EYEBOLT WITH 2 HEX NUT-SS316","sku":"","sysQty":35},{"id":"p1279","brand":"MULTISPAN","name":"M-20 PVC Cable Gland","sku":"","sysQty":3},{"id":"p1280","brand":"MULTISPAN","name":"22/220/R-M-F","sku":"","sysQty":1},{"id":"p1281","brand":"MULTISPAN","name":"22/220/Y-M-F","sku":"","sysQty":1},{"id":"p1282","brand":"MULTISPAN","name":"ACC-RS65X-TS","sku":"","sysQty":4},{"id":"p1283","brand":"MULTISPAN","name":"MFM-13-M1 With 125A CT","sku":"","sysQty":2},{"id":"p1284","brand":"MULTISPAN","name":"22/220 Blue SS Indicator","sku":"","sysQty":4},{"id":"p1285","brand":"MULTISPAN","name":"22/220 Red SS Indicator","sku":"","sysQty":6},{"id":"p1286","brand":"MULTISPAN","name":"22/220 Yellow SS Indicator","sku":"","sysQty":1},{"id":"p1287","brand":"MULTISPAN","name":"Kapson SMPS","sku":"","sysQty":1},{"id":"p1288","brand":"MULTISPAN","name":"22/220/R-M-F 24V","sku":"","sysQty":1},{"id":"p1289","brand":"MULTISPAN","name":"22/220 Red 24V Indicator","sku":"","sysQty":1},{"id":"p1290","brand":"MULTISPAN","name":"SLC440COM-ER-0410-14-1700","sku":"","sysQty":27},{"id":"p1291","brand":"MULTISPAN","name":"SLC440COM-ER-0490-14-1700","sku":"","sysQty":2},{"id":"p1292","brand":"MULTISPAN","name":"MFM-13-M1-A2-00-32","sku":"","sysQty":1},{"id":"p1293","brand":"MULTISPAN","name":"MFM-13-M1-E5-00","sku":"","sysQty":6},{"id":"p1294","brand":"MULTISPAN","name":"CC-5022","sku":"","sysQty":4},{"id":"p1295","brand":"MULTISPAN","name":"MFM-14DC Meter","sku":"","sysQty":1},{"id":"p1296","brand":"MULTISPAN","name":"MFM-14DC-M1-A2-00","sku":"","sysQty":4},{"id":"p1297","brand":"MULTISPAN","name":"MHC-1101","sku":"","sysQty":1},{"id":"p1298","brand":"MULTISPAN","name":"MHC-512","sku":"","sysQty":2},{"id":"p1299","brand":"MULTISPAN","name":"MHC-512-B1-01-W","sku":"","sysQty":2},{"id":"p1300","brand":"MULTISPAN","name":"MHT-1202-A2-00","sku":"","sysQty":4},{"id":"p1301","brand":"MULTISPAN","name":"MHT-1202-A2-52","sku":"","sysQty":20},{"id":"p1302","brand":"MULTISPAN","name":"MHT-1202-M1-A2-00","sku":"","sysQty":4},{"id":"p1303","brand":"MULTISPAN","name":"ES50LW1U","sku":"","sysQty":4},{"id":"p1304","brand":"MULTISPAN","name":"101 ZDA 60 50 01 AL5","sku":"","sysQty":117},{"id":"p1305","brand":"MULTISPAN","name":"ES50LY1U","sku":"","sysQty":19},{"id":"p1306","brand":"MULTISPAN","name":"MI-431-24-AV","sku":"","sysQty":4},{"id":"p1307","brand":"MULTISPAN","name":"TW1UR1A1","sku":"","sysQty":1},{"id":"p1308","brand":"MULTISPAN","name":"MI-431-24-VA","sku":"","sysQty":3},{"id":"p1309","brand":"MULTISPAN","name":"101 PMDD 200 15 00 AL5","sku":"","sysQty":107},{"id":"p1310","brand":"MULTISPAN","name":"MI-431-24-VV","sku":"","sysQty":3},{"id":"p1311","brand":"MULTISPAN","name":"BNS36-11ZG-L","sku":"","sysQty":4},{"id":"p1312","brand":"MULTISPAN","name":"MI-532-24-A-AA","sku":"","sysQty":5},{"id":"p1313","brand":"MULTISPAN","name":"MI-532-24-A-AV","sku":"","sysQty":5},{"id":"p1314","brand":"MULTISPAN","name":"MI-532-24-A-VV","sku":"","sysQty":5},{"id":"p1315","brand":"MULTISPAN","name":"MI-532-24-V-AA","sku":"","sysQty":5},{"id":"p1316","brand":"MULTISPAN","name":"SHGV-B/LD1/102/12+BO","sku":"","sysQty":1},{"id":"p1317","brand":"MULTISPAN","name":"MI-532-24-V-AV","sku":"","sysQty":5},{"id":"p1318","brand":"MULTISPAN","name":"MI-532-24-V-VV","sku":"","sysQty":3},{"id":"p1319","brand":"MULTISPAN","name":"MI-631-24-AA","sku":"","sysQty":6},{"id":"p1320","brand":"MULTISPAN","name":"BNS260-02Z-ST-L","sku":"","sysQty":1},{"id":"p1321","brand":"MULTISPAN","name":"716TX","sku":"","sysQty":11},{"id":"p1322","brand":"MULTISPAN","name":"VS-043QE","sku":"","sysQty":7},{"id":"p1323","brand":"MULTISPAN","name":"MI-631-24-VA","sku":"","sysQty":8},{"id":"p1324","brand":"MULTISPAN","name":"MI-631-24-VV","sku":"","sysQty":19},{"id":"p1325","brand":"MULTISPAN","name":"AZM170SK-11/02ZRK-2197-24VAC/DC","sku":"","sysQty":4},{"id":"p1326","brand":"MULTISPAN","name":"PT-100","sku":"","sysQty":5},{"id":"p1327","brand":"MULTISPAN","name":"MI-631-A2-74","sku":"","sysQty":10},{"id":"p1328","brand":"MULTISPAN","name":"MI-631-A2-VA","sku":"","sysQty":9},{"id":"p1329","brand":"MULTISPAN","name":"MI-631-E3-01","sku":"","sysQty":12},{"id":"p1330","brand":"MULTISPAN","name":"MI-631-E3-AA","sku":"","sysQty":85},{"id":"p1331","brand":"MULTISPAN","name":"MI-631-E3-AV","sku":"","sysQty":15},{"id":"p1332","brand":"MULTISPAN","name":"Controller","sku":"","sysQty":1},{"id":"p1333","brand":"MULTISPAN","name":"IS C22PP/2NO-5E0","sku":"","sysQty":14},{"id":"p1334","brand":"MULTISPAN","name":"MI-631P-24-V-03  (0-100 Degree)","sku":"","sysQty":3},{"id":"p1335","brand":"MULTISPAN","name":"AE-S-16-024D-1-FFI-B-S-CNC","sku":"","sysQty":7},{"id":"p1336","brand":"MULTISPAN","name":"MI-631P-24-V-07 (0-400\u00b0 deg)","sku":"","sysQty":3},{"id":"p1337","brand":"MULTISPAN","name":"MI-631T","sku":"","sysQty":10},{"id":"p1338","brand":"MULTISPAN","name":"MI-632-24-A-AA","sku":"","sysQty":5},{"id":"p1339","brand":"MULTISPAN","name":"MI-632-24-A-AV","sku":"","sysQty":5},{"id":"p1340","brand":"MULTISPAN","name":"MI-632-24-A-VV","sku":"","sysQty":7},{"id":"p1341","brand":"MULTISPAN","name":"P2RFZ-08-E","sku":"","sysQty":200},{"id":"p1342","brand":"MULTISPAN","name":"Mounting PLATE-ZQ900 SWITCH","sku":"","sysQty":2},{"id":"p1343","brand":"MULTISPAN","name":"ACC-CORNER PULLEY-A2","sku":"","sysQty":12},{"id":"p1344","brand":"MULTISPAN","name":"MI-632-24-V-AA","sku":"","sysQty":4},{"id":"p1345","brand":"MULTISPAN","name":"FPEM-1210RP-A0201L-V2","sku":"","sysQty":2},{"id":"p1346","brand":"MULTISPAN","name":"IS C08MM/4NO-2E0","sku":"","sysQty":3},{"id":"p1347","brand":"MULTISPAN","name":"101 ZDA 48 16 00 AL5","sku":"","sysQty":39},{"id":"p1348","brand":"MULTISPAN","name":"MI-632-24-V-AV","sku":"","sysQty":5},{"id":"p1349","brand":"MULTISPAN","name":"SV-DA200-1R0-2-N0","sku":"","sysQty":3},{"id":"p1350","brand":"MULTISPAN","name":"FIOA-0800L","sku":"","sysQty":1},{"id":"p1351","brand":"MULTISPAN","name":"SLMBS3B5","sku":"","sysQty":2},{"id":"p1352","brand":"MULTISPAN","name":"MI-632-E3-A-AA","sku":"","sysQty":267},{"id":"p1353","brand":"MULTISPAN","name":"MI-632-E3-A-VV","sku":"","sysQty":1},{"id":"p1354","brand":"MULTISPAN","name":"MMC-3006","sku":"","sysQty":2},{"id":"p1355","brand":"MULTISPAN","name":"MPC-5062","sku":"","sysQty":1},{"id":"p1356","brand":"MULTISPAN","name":"MPD-192-A2-N7","sku":"","sysQty":6},{"id":"p1357","brand":"MULTISPAN","name":"MPD-192-E3-N0","sku":"","sysQty":3},{"id":"p1358","brand":"MULTISPAN","name":"MPD-192-E3-N6","sku":"","sysQty":1},{"id":"p1359","brand":"MULTISPAN","name":"FP2070T-E","sku":"","sysQty":1},{"id":"p1360","brand":"MULTISPAN","name":"FP4070TN-E","sku":"","sysQty":6},{"id":"p1361","brand":"MULTISPAN","name":"CNV-02-B","sku":"","sysQty":22},{"id":"p1362","brand":"MULTISPAN","name":"FIOD0404R-B","sku":"","sysQty":1},{"id":"p1363","brand":"MULTISPAN","name":"MPD-192-M1-E3-07","sku":"","sysQty":3},{"id":"p1364","brand":"MULTISPAN","name":"FL055-0806R-V2","sku":"","sysQty":2},{"id":"p1365","brand":"MULTISPAN","name":"Capacitor","sku":"","sysQty":1},{"id":"p1366","brand":"MULTISPAN","name":"Pressing Socket","sku":"","sysQty":1},{"id":"p1367","brand":"MULTISPAN","name":"HEAT SINK T-22.5 + DIN","sku":"","sysQty":1},{"id":"p1368","brand":"MULTISPAN","name":"HEAT SINK T-45 + DIN","sku":"","sysQty":2},{"id":"p1369","brand":"MULTISPAN","name":"HEAT SINK T-90 + DIN","sku":"","sysQty":1},{"id":"p1370","brand":"MULTISPAN","name":"AE-08-024D-1-B-C-BK","sku":"","sysQty":51},{"id":"p1371","brand":"MULTISPAN","name":"MPD-194-M1-E2-N0","sku":"","sysQty":5},{"id":"p1372","brand":"MULTISPAN","name":"DA180-S2R8SG0-STYPE","sku":"","sysQty":2},{"id":"p1373","brand":"MULTISPAN","name":"SV-ML-06-0R4G-2-SA0-1000","sku":"","sysQty":3},{"id":"p1374","brand":"MULTISPAN","name":"SLMBS3M4","sku":"","sysQty":23},{"id":"p1375","brand":"MULTISPAN","name":"FP4101TN","sku":"","sysQty":2},{"id":"p1376","brand":"MULTISPAN","name":"SV-MM13-1R0E-2-9A2-1000","sku":"","sysQty":6},{"id":"p1377","brand":"MULTISPAN","name":"SV-DA200-1R5-2-N0","sku":"","sysQty":3},{"id":"p1378","brand":"MULTISPAN","name":"MPD-19EL-A2-00","sku":"","sysQty":2},{"id":"p1379","brand":"MULTISPAN","name":"BILR024D","sku":"","sysQty":10},{"id":"p1380","brand":"MULTISPAN","name":"BILG024D","sku":"","sysQty":10},{"id":"p1381","brand":"MULTISPAN","name":"BILB024D","sku":"","sysQty":10},{"id":"p1382","brand":"MULTISPAN","name":"IFM0001","sku":"","sysQty":10},{"id":"p1383","brand":"MULTISPAN","name":"PGMMOD05","sku":"","sysQty":1},{"id":"p1384","brand":"MULTISPAN","name":"MS-1208","sku":"","sysQty":2},{"id":"p1385","brand":"MULTISPAN","name":"BNS260-11/01Z-R 5.0M","sku":"","sysQty":7},{"id":"p1386","brand":"MULTISPAN","name":"HONEYWELL:PX2CG1XX001BACHX","sku":"","sysQty":6},{"id":"p1387","brand":"MULTISPAN","name":"MS-1208-M1","sku":"","sysQty":1},{"id":"p1388","brand":"MULTISPAN","name":"DBEL-06-05-BD-0400","sku":"","sysQty":6},{"id":"p1389","brand":"MULTISPAN","name":"SPEAKER","sku":"","sysQty":2},{"id":"p1390","brand":"MULTISPAN","name":"MS-1248-M1","sku":"","sysQty":1},{"id":"p1391","brand":"MULTISPAN","name":"FL004-0806P","sku":"","sysQty":1},{"id":"p1392","brand":"MULTISPAN","name":"MS-1248U","sku":"","sysQty":5},{"id":"p1393","brand":"MULTISPAN","name":"MS-L14-M1-D3-00","sku":"","sysQty":2},{"id":"p1394","brand":"MULTISPAN","name":"MSU-1248U-M1 (SOFTWARE CD)","sku":"","sysQty":1},{"id":"p1395","brand":"MULTISPAN","name":"Z4V7H-336-11Z-M20","sku":"","sysQty":25},{"id":"p1396","brand":"MULTISPAN","name":"AE-PM-IDC-F20","sku":"","sysQty":28},{"id":"p1397","brand":"MULTISPAN","name":"AE-PM-IDC-F34","sku":"","sysQty":26},{"id":"p1398","brand":"MULTISPAN","name":"AZM190-11/11RKAE0-24VDC","sku":"","sysQty":5},{"id":"p1399","brand":"MULTISPAN","name":"MVC-7210","sku":"","sysQty":2},{"id":"p1400","brand":"MULTISPAN","name":"MVC-72N-B1-00","sku":"","sysQty":40},{"id":"p1401","brand":"MULTISPAN","name":"FIOA-0402-U-16-B","sku":"","sysQty":1},{"id":"p1402","brand":"MULTISPAN","name":"PC-2044-A2-00","sku":"","sysQty":1},{"id":"p1403","brand":"MULTISPAN","name":"PC-444-A2-00","sku":"","sysQty":6},{"id":"p1404","brand":"MULTISPAN","name":"SLMPBS3A1","sku":"","sysQty":7},{"id":"p1405","brand":"MULTISPAN","name":"FP2043TN-LE1208P-A0402U-V3","sku":"","sysQty":1},{"id":"p1406","brand":"MULTISPAN","name":"PC-444-A2-01","sku":"","sysQty":12},{"id":"p1407","brand":"MULTISPAN","name":"PF-11","sku":"","sysQty":5},{"id":"p1408","brand":"MULTISPAN","name":"BPS260-2","sku":"","sysQty":5},{"id":"p1409","brand":"MULTISPAN","name":"SILW012C","sku":"","sysQty":5},{"id":"p1410","brand":"MULTISPAN","name":"PFLC-68-D1-03","sku":"","sysQty":6},{"id":"p1411","brand":"MULTISPAN","name":"PI-11-A2-00","sku":"","sysQty":35},{"id":"p1412","brand":"MULTISPAN","name":"PI-38-E3-N0","sku":"","sysQty":22},{"id":"p1413","brand":"MULTISPAN","name":"PI-41-A2-00","sku":"","sysQty":10},{"id":"p1414","brand":"MULTISPAN","name":"PID-2303-3C","sku":"","sysQty":1},{"id":"p1415","brand":"MULTISPAN","name":"PID-2303-3C-M1-A1-60A-X-XO","sku":"","sysQty":10},{"id":"p1416","brand":"MULTISPAN","name":"ES60004","sku":"","sysQty":4},{"id":"p1417","brand":"MULTISPAN","name":"NM 100-24 SL","sku":"","sysQty":1},{"id":"p1418","brand":"MULTISPAN","name":"NM 120-24 SL","sku":"","sysQty":1},{"id":"p1419","brand":"MULTISPAN","name":"PM-133","sku":"","sysQty":11},{"id":"p1420","brand":"MULTISPAN","name":"PQM-16-M1-E5-00","sku":"","sysQty":8},{"id":"p1421","brand":"MULTISPAN","name":"PQM-16-M1-E5-06","sku":"","sysQty":11},{"id":"p1422","brand":"MULTISPAN","name":"PS12-1A","sku":"","sysQty":32},{"id":"p1423","brand":"MULTISPAN","name":"PS12-2A","sku":"","sysQty":5},{"id":"p1424","brand":"MULTISPAN","name":"PS12-5A","sku":"","sysQty":1},{"id":"p1425","brand":"MULTISPAN","name":"901 PHT 24 25 010 AL5","sku":"","sysQty":10},{"id":"p1426","brand":"MULTISPAN","name":"RA50CR4E00R000D0","sku":"","sysQty":1},{"id":"p1427","brand":"MULTISPAN","name":"901 PHT 24 90 010 CU2","sku":"","sysQty":2},{"id":"p1428","brand":"MULTISPAN","name":"901 PHT 44 90 010 CU2","sku":"","sysQty":54},{"id":"p1429","brand":"MULTISPAN","name":"PS24-0.5A","sku":"","sysQty":33},{"id":"p1430","brand":"MULTISPAN","name":"PS24-1.5A","sku":"","sysQty":22},{"id":"p1431","brand":"MULTISPAN","name":"PS24-10A","sku":"","sysQty":21},{"id":"p1432","brand":"MULTISPAN","name":"PS24-1A-01","sku":"","sysQty":19},{"id":"p1433","brand":"MULTISPAN","name":"PS24-2.5A-OP","sku":"","sysQty":67},{"id":"p1434","brand":"MULTISPAN","name":"FPEM-1614RP-V2","sku":"","sysQty":1},{"id":"p1435","brand":"MULTISPAN","name":"PS24-5A-P-00","sku":"","sysQty":112},{"id":"p1436","brand":"MULTISPAN","name":"PS24-6.5A","sku":"","sysQty":22},{"id":"p1437","brand":"MULTISPAN","name":"IT505WCWMSP240A","sku":"","sysQty":94},{"id":"p1438","brand":"MULTISPAN","name":"PSW24-5A","sku":"","sysQty":43},{"id":"p1439","brand":"MULTISPAN","name":"PTC-1202A-A2-00A","sku":"","sysQty":10},{"id":"p1440","brand":"MULTISPAN","name":"FLD0808R-V2","sku":"","sysQty":19},{"id":"p1441","brand":"MULTISPAN","name":"SV-MM13-1R0E-4-9A0-1000","sku":"","sysQty":1},{"id":"p1442","brand":"MULTISPAN","name":"PTC-1202A-A2-00V","sku":"","sysQty":1},{"id":"p1443","brand":"MULTISPAN","name":"PTC-382A-A2-00A","sku":"","sysQty":4},{"id":"p1444","brand":"MULTISPAN","name":"ELLRG024D","sku":"","sysQty":10},{"id":"p1445","brand":"MULTISPAN","name":"IVC1L-5AM","sku":"","sysQty":1},{"id":"p1446","brand":"MULTISPAN","name":"FP2070T-V2","sku":"","sysQty":2},{"id":"p1447","brand":"MULTISPAN","name":"FP2043TN-E","sku":"","sysQty":5},{"id":"p1448","brand":"MULTISPAN","name":"FP2070TN-LE2016RP-A0402U","sku":"","sysQty":1},{"id":"p1449","brand":"MULTISPAN","name":"FP4043TN-E","sku":"","sysQty":14},{"id":"p1450","brand":"MULTISPAN","name":"PTC-382A-M1-A2-00A","sku":"","sysQty":5},{"id":"p1451","brand":"MULTISPAN","name":"PTC-4201-M1-A2-00","sku":"","sysQty":11},{"id":"p1452","brand":"MULTISPAN","name":"PTC-4202A-E3-N0A","sku":"","sysQty":17},{"id":"p1453","brand":"MULTISPAN","name":"PTC-4202A-M1-A2-00A","sku":"","sysQty":7},{"id":"p1454","brand":"MULTISPAN","name":"PTC-4202A-M1-E3-N0A","sku":"","sysQty":1},{"id":"p1455","brand":"MULTISPAN","name":"PTC-4202-E3-00","sku":"","sysQty":38},{"id":"p1456","brand":"MULTISPAN","name":"RH-100","sku":"","sysQty":2},{"id":"p1457","brand":"MULTISPAN","name":"IC24A04W024D","sku":"","sysQty":10},{"id":"p1458","brand":"MULTISPAN","name":"4C 6 Sqmm CU FR Cable - Grey Screened","sku":"","sysQty":212},{"id":"p1459","brand":"MULTISPAN","name":"4C 2.5 Sqmm CU FR Cable - Grey Screened","sku":"","sysQty":210},{"id":"p1460","brand":"MULTISPAN","name":"RPM-1044","sku":"","sysQty":3},{"id":"p1461","brand":"MULTISPAN","name":"DIN RAIL 22.5 MM","sku":"","sysQty":10},{"id":"p1462","brand":"MULTISPAN","name":"RPM-2044","sku":"","sysQty":10},{"id":"p1463","brand":"MULTISPAN","name":"EPLY110A","sku":"","sysQty":19},{"id":"p1464","brand":"MULTISPAN","name":"0.5 Sqmm CU FR Cable - Brown","sku":"","sysQty":630},{"id":"p1465","brand":"MULTISPAN","name":"1C 1.5 Sqmm CU FR Cable - Red","sku":"","sysQty":180},{"id":"p1466","brand":"MULTISPAN","name":"GD27-0R7G-S2-B","sku":"","sysQty":10},{"id":"p1467","brand":"MULTISPAN","name":"RPM-2044-2R","sku":"","sysQty":10},{"id":"p1468","brand":"MULTISPAN","name":"RPM-3201","sku":"","sysQty":6},{"id":"p1469","brand":"MULTISPAN","name":"RS-6004 (Single Side)","sku":"","sysQty":1},{"id":"p1470","brand":"MULTISPAN","name":"AE-04-024D-1-B-C-BK (11100848)","sku":"","sysQty":25},{"id":"p1471","brand":"MULTISPAN","name":"IS C22PP/2NC-5E0","sku":"","sysQty":16},{"id":"p1472","brand":"MULTISPAN","name":"3C 1.5 Sqmm CU FR Cable - Grey","sku":"","sysQty":300},{"id":"p1473","brand":"MULTISPAN","name":"2C 0.5 Sqmm CU FR Cable - Grey","sku":"","sysQty":300},{"id":"p1474","brand":"MULTISPAN","name":"4C 1 Sqmm CU FR Cable - Grey","sku":"","sysQty":300},{"id":"p1475","brand":"MULTISPAN","name":"901 MCBUR 60 50 010 AL5 1S","sku":"","sysQty":3},{"id":"p1476","brand":"MULTISPAN","name":"BNS260-02Z-ST-R","sku":"","sysQty":2},{"id":"p1477","brand":"MULTISPAN","name":"DA70A0FNNNNNN020","sku":"","sysQty":9},{"id":"p1478","brand":"MULTISPAN","name":"DAM00PDP2S000000","sku":"","sysQty":9},{"id":"p1479","brand":"MULTISPAN","name":"TS633","sku":"","sysQty":1},{"id":"p1480","brand":"MULTISPAN","name":"SD-22-B1-N0","sku":"","sysQty":18},{"id":"p1481","brand":"MULTISPAN","name":"SDX-22","sku":"","sysQty":31},{"id":"p1482","brand":"MULTISPAN","name":"2.5 Sqmm CU FR Cable - Yellow","sku":"","sysQty":90},{"id":"p1483","brand":"MULTISPAN","name":"4 Sqmm CU FR Cable - Yellow","sku":"","sysQty":90},{"id":"p1484","brand":"MULTISPAN","name":"TZFW4OES24VDC-2917","sku":"","sysQty":6},{"id":"p1485","brand":"MULTISPAN","name":"SLC440COM-ER-0330-30-1700","sku":"","sysQty":1},{"id":"p1486","brand":"MULTISPAN","name":"SLC440COM-ER-0490-30-1700","sku":"","sysQty":4},{"id":"p1487","brand":"MULTISPAN","name":"SLC440COM-ER-0570-30-1700","sku":"","sysQty":2},{"id":"p1488","brand":"MULTISPAN","name":"SLC440COM-ER-0650-30-1700","sku":"","sysQty":3},{"id":"p1489","brand":"MULTISPAN","name":"905 3PH ZDA 48 40 01","sku":"","sysQty":15},{"id":"p1490","brand":"MULTISPAN","name":"EP09SK00C0000","sku":"","sysQty":48},{"id":"p1491","brand":"MULTISPAN","name":"EP09SL00C0000","sku":"","sysQty":47},{"id":"p1492","brand":"MULTISPAN","name":"0.5 Sqmm CU FR Cable - Red","sku":"","sysQty":180},{"id":"p1493","brand":"MULTISPAN","name":"905 CLOS 24 50 010 FULL","sku":"","sysQty":2},{"id":"p1494","brand":"MULTISPAN","name":"SPP-22-E-00","sku":"","sysQty":463},{"id":"p1495","brand":"MULTISPAN","name":"SPP-22-N0 (SPP-22-B)","sku":"","sysQty":158},{"id":"p1496","brand":"MULTISPAN","name":"IVC1L-4PT","sku":"","sysQty":1},{"id":"p1497","brand":"MULTISPAN","name":"SQT-1022","sku":"","sysQty":4},{"id":"p1498","brand":"MULTISPAN","name":"SQT-1022-D1-00","sku":"","sysQty":4},{"id":"p1499","brand":"MULTISPAN","name":"SQT-1044","sku":"","sysQty":1},{"id":"p1500","brand":"MULTISPAN","name":"1002MC-LX-10","sku":"","sysQty":1},{"id":"p1501","brand":"MULTISPAN","name":"TC-221P","sku":"","sysQty":11},{"id":"p1502","brand":"MULTISPAN","name":"TC-29-A2-02","sku":"","sysQty":6},{"id":"p1503","brand":"MULTISPAN","name":"TC-29P-A2-01","sku":"","sysQty":26},{"id":"p1504","brand":"MULTISPAN","name":"TC-421P-A2-N1-RS","sku":"","sysQty":24},{"id":"p1505","brand":"MULTISPAN","name":"TC-421P-A2-N1-WS","sku":"","sysQty":123},{"id":"p1506","brand":"MULTISPAN","name":"SRB301MC-24V (151190684)","sku":"","sysQty":141},{"id":"p1507","brand":"MULTISPAN","name":"TC-442-WS-A2-01","sku":"","sysQty":53},{"id":"p1508","brand":"MULTISPAN","name":"DA180-S5R0SG0 S TYPE","sku":"","sysQty":1},{"id":"p1509","brand":"MULTISPAN","name":"SV-MM13-1R0E-2-SA0-1000","sku":"","sysQty":1},{"id":"p1510","brand":"MULTISPAN","name":"FL1001","sku":"","sysQty":1},{"id":"p1511","brand":"MULTISPAN","name":"FL2002","sku":"","sysQty":1},{"id":"p1512","brand":"MULTISPAN","name":"0.5 Sqmm CU FR Cable - Orange","sku":"","sysQty":180},{"id":"p1513","brand":"MULTISPAN","name":"0.5 Sqmm CU FR Cable - Green","sku":"","sysQty":180},{"id":"p1514","brand":"MULTISPAN","name":"TC-49P-A2-N1-R","sku":"","sysQty":29},{"id":"p1515","brand":"MULTISPAN","name":"VS-070QS","sku":"","sysQty":2},{"id":"p1516","brand":"MULTISPAN","name":"A9KF71210BQ","sku":"","sysQty":140},{"id":"p1517","brand":"MULTISPAN","name":"Mounting Clamp With Powder Coating - Black","sku":"","sysQty":140},{"id":"p1518","brand":"MULTISPAN","name":"TC-49P-A2-N1-W","sku":"","sysQty":25},{"id":"p1519","brand":"MULTISPAN","name":"TC-510","sku":"","sysQty":3},{"id":"p1520","brand":"MULTISPAN","name":"IMS20A-08M75B30C-2-P94-E","sku":"","sysQty":1},{"id":"p1521","brand":"MULTISPAN","name":"DAML-150-03-BC0-00","sku":"","sysQty":1},{"id":"p1522","brand":"MULTISPAN","name":"TC-510-A2-02-W-BL","sku":"","sysQty":2},{"id":"p1523","brand":"MULTISPAN","name":"TCS-35-B1-00","sku":"","sysQty":8},{"id":"p1524","brand":"MULTISPAN","name":"UTC-114-A2-R","sku":"","sysQty":13},{"id":"p1525","brand":"MULTISPAN","name":"25mm Steel Re-Inforced Pipe","sku":"","sysQty":120},{"id":"p1526","brand":"MULTISPAN","name":"UTC-1201A-M1-RG-A2-00","sku":"","sysQty":9},{"id":"p1527","brand":"MULTISPAN","name":"UTC-1202G+-WG-E3-00","sku":"","sysQty":87},{"id":"p1528","brand":"MULTISPAN","name":"UTC-1202G-WG-A2-00","sku":"","sysQty":19},{"id":"p1529","brand":"MULTISPAN","name":"UTC-121G-WG-A2-X0","sku":"","sysQty":15},{"id":"p1530","brand":"MULTISPAN","name":"UTC-121P-A2-3-RG","sku":"","sysQty":7},{"id":"p1531","brand":"MULTISPAN","name":"UTC-1X-D1-00","sku":"","sysQty":13},{"id":"p1532","brand":"MULTISPAN","name":"UTC-214-A2-R","sku":"","sysQty":8},{"id":"p1533","brand":"MULTISPAN","name":"UTC-2202G-RG-A2-00","sku":"","sysQty":20},{"id":"p1534","brand":"MULTISPAN","name":"UTC-2202G-WG-A2-00","sku":"","sysQty":3},{"id":"p1535","brand":"MULTISPAN","name":"UTC-221G-RG-A2-00","sku":"","sysQty":13},{"id":"p1536","brand":"MULTISPAN","name":"UTC-221G-WG-A2-00","sku":"","sysQty":18},{"id":"p1537","brand":"MULTISPAN","name":"UTC-221P-A2-3-RG","sku":"","sysQty":31},{"id":"p1538","brand":"MULTISPAN","name":"UTC-2X-00","sku":"","sysQty":11},{"id":"p1539","brand":"MULTISPAN","name":"UTC-321P-RG","sku":"","sysQty":1},{"id":"p1540","brand":"MULTISPAN","name":"UTC-413P-A2-R","sku":"","sysQty":6},{"id":"p1541","brand":"MULTISPAN","name":"UTC-4201A-A2-00A-RG","sku":"","sysQty":22},{"id":"p1542","brand":"MULTISPAN","name":"SLC440-ER-0170-30-01","sku":"","sysQty":1},{"id":"p1543","brand":"MULTISPAN","name":"UTC-4201A-M1-RG-A2-00A","sku":"","sysQty":16},{"id":"p1544","brand":"MULTISPAN","name":"UTC-4202G+-WG-E3-00","sku":"","sysQty":20},{"id":"p1545","brand":"MULTISPAN","name":"EG15RI10C024D","sku":"","sysQty":1},{"id":"p1546","brand":"MULTISPAN","name":"UTC-421G-WG-A2-00","sku":"","sysQty":18},{"id":"p1547","brand":"MULTISPAN","name":"UTC-421P-A2-3-RS","sku":"","sysQty":27},{"id":"p1548","brand":"MULTISPAN","name":"UTC-421P-A2-3-WS","sku":"","sysQty":36},{"id":"p1549","brand":"MULTISPAN","name":"AZ16-02ZVRK-M20","sku":"","sysQty":1},{"id":"p1550","brand":"MULTISPAN","name":"SHGV-B/PAT102","sku":"","sysQty":1},{"id":"p1551","brand":"MULTISPAN","name":"SHGV-B/PAT110","sku":"","sysQty":1},{"id":"p1552","brand":"MULTISPAN","name":"SHGV-B/PAT12","sku":"","sysQty":1},{"id":"p1553","brand":"MULTISPAN","name":"UTC-421P-D1-3-WS","sku":"","sysQty":4},{"id":"p1554","brand":"MULTISPAN","name":"UTI-38-A2-00","sku":"","sysQty":28},{"id":"p1555","brand":"MULTISPAN","name":"UTR-1033-A2-00","sku":"","sysQty":18},{"id":"p1556","brand":"MULTISPAN","name":"UTR-1033-A2-01","sku":"","sysQty":68},{"id":"p1557","brand":"MULTISPAN","name":"UTR-1244-A2-00","sku":"","sysQty":7},{"id":"p1558","brand":"MULTISPAN","name":"DBML-600-05-NWA-00","sku":"","sysQty":1},{"id":"p1559","brand":"MULTISPAN","name":"UTR-2033-A2-00","sku":"","sysQty":8},{"id":"p1560","brand":"MULTISPAN","name":"UTR-2244","sku":"","sysQty":1},{"id":"p1561","brand":"MULTISPAN","name":"V7E-M13A-1R020-Q1","sku":"","sysQty":3},{"id":"p1562","brand":"MULTISPAN","name":"SD710-5R5A-PA","sku":"","sysQty":2},{"id":"p1563","brand":"MULTISPAN","name":"VM150-L030-KNL","sku":"","sysQty":3},{"id":"p1564","brand":"MULTISPAN","name":"VE04-L030-2ANL","sku":"","sysQty":3},{"id":"p1565","brand":"MULTISPAN","name":"VC1-1208MDT","sku":"","sysQty":1},{"id":"p1566","brand":"MULTISPAN","name":"VI20-070C-F","sku":"","sysQty":7},{"id":"p1567","brand":"MULTISPAN","name":"AC01-S2-R75G-B-W","sku":"","sysQty":5},{"id":"p1568","brand":"MULTISPAN","name":"VI20-043S-F2","sku":"","sysQty":3},{"id":"p1569","brand":"MULTISPAN","name":"MPC-LP-2211","sku":"","sysQty":1},{"id":"p1570","brand":"MULTISPAN","name":"UTR-35-A2-01","sku":"","sysQty":15},{"id":"p1571","brand":"MULTISPAN","name":"101 RDA 60 50 01 AL5","sku":"","sysQty":1},{"id":"p1572","brand":"MULTISPAN","name":"UTR-413","sku":"","sysQty":32},{"id":"p1573","brand":"MULTISPAN","name":"DBEL-06-05-B0-0400","sku":"","sysQty":1},{"id":"p1574","brand":"MULTISPAN","name":"UTR-4244-A2-00","sku":"","sysQty":20},{"id":"p1575","brand":"MULTISPAN","name":"DAML-150-05-BC0-00","sku":"","sysQty":1},{"id":"p1576","brand":"MULTISPAN","name":"VC-4TC","sku":"","sysQty":1},{"id":"p1577","brand":"MULTISPAN","name":"VI20-101S-FE","sku":"","sysQty":1},{"id":"p1578","brand":"MULTISPAN","name":"AC01-S2-R40G-B-W","sku":"","sysQty":4},{"id":"p1579","brand":"MULTISPAN","name":"UTR-433-A2-N-RG","sku":"","sysQty":19},{"id":"p1580","brand":"MULTISPAN","name":"VC1-1410MDT","sku":"","sysQty":4},{"id":"p1581","brand":"MULTISPAN","name":"V7E-M13A-2R020-Q1","sku":"","sysQty":1},{"id":"p1582","brand":"MULTISPAN","name":"V7E-L08A-R7520-Q1L","sku":"","sysQty":1},{"id":"p1583","brand":"MULTISPAN","name":"VE04-L030-2SNL","sku":"","sysQty":1},{"id":"p1584","brand":"MULTISPAN","name":"SD700-9R5A-PA","sku":"","sysQty":1},{"id":"p1585","brand":"MULTISPAN","name":"V7E-L06A-R4030-Q1","sku":"","sysQty":1},{"id":"p1586","brand":"MULTISPAN","name":"CT 0-30AMP PRO 0-10VDC With Buffer","sku":"","sysQty":2},{"id":"p1587","brand":"MULTISPAN","name":"AC310-T3-7R5G/011P-B","sku":"","sysQty":1},{"id":"p1588","brand":"MULTISPAN","name":"AC310-T3-5R5G/7R5P-B","sku":"","sysQty":2},{"id":"p1589","brand":"MULTISPAN","name":"UTR-433-A2-N-RG-52","sku":"","sysQty":11},{"id":"p1590","brand":"MULTISPAN","name":"UTR-433-A2-N-RG-55","sku":"","sysQty":12},{"id":"p1591","brand":"MULTISPAN","name":"E83-2050","sku":"","sysQty":2},{"id":"p1592","brand":"MULTISPAN","name":"AC10-T3-R75G-B","sku":"","sysQty":2},{"id":"p1593","brand":"MULTISPAN","name":"AC10-T/S2-R75G-B","sku":"","sysQty":5},{"id":"p1594","brand":"MULTISPAN","name":"SD700-7R6A-PA","sku":"","sysQty":1},{"id":"p1595","brand":"MULTISPAN","name":"301 3FR OLSP ZDA 60 10 01 (HEAT SINK D-67.5)","sku":"","sysQty":1},{"id":"p1596","brand":"MULTISPAN","name":"301 3FW DOLSP ZDA 60 05 01 (Heat Sink D-67.5)","sku":"","sysQty":5},{"id":"p1597","brand":"MULTISPAN","name":"803 ZDA 55 50 01","sku":"","sysQty":232},{"id":"p1598","brand":"MULTISPAN","name":"MLPSS3A7","sku":"","sysQty":9},{"id":"p1599","brand":"MULTISPAN","name":"Conference Table","sku":"","sysQty":1},{"id":"p1600","brand":"MULTISPAN","name":"V22-RYB-00","sku":"","sysQty":19},{"id":"p1601","brand":"MULTISPAN","name":"8 module Acccess Flap With switches","sku":"","sysQty":2},{"id":"p1602","brand":"MULTISPAN","name":"VAW-34DC (0-1000)","sku":"","sysQty":1},{"id":"p1603","brand":"MULTISPAN","name":"VAW-34DC-A2-00 (0-750)","sku":"","sysQty":13},{"id":"p1604","brand":"MULTISPAN","name":"VMR-13","sku":"","sysQty":11},{"id":"p1605","brand":"MULTISPAN","name":"VMR-232","sku":"","sysQty":1},{"id":"p1606","brand":"MULTISPAN","name":"VMR-23-E2-00","sku":"","sysQty":10},{"id":"p1607","brand":"MULTISPAN","name":"V7E-M13A-1R520-Q1","sku":"","sysQty":1},{"id":"p1608","brand":"MULTISPAN","name":"VC1-2820MAR","sku":"","sysQty":1},{"id":"p1609","brand":"MULTISPAN","name":"VOLT-13-B1-00","sku":"","sysQty":5},{"id":"p1610","brand":"MULTISPAN","name":"AZM161-B1 (151145117)","sku":"","sysQty":3},{"id":"p1611","brand":"MULTISPAN","name":"VC1-1614MDR","sku":"","sysQty":4},{"id":"p1612","brand":"MULTISPAN","name":"VC-4AD","sku":"","sysQty":3},{"id":"p1613","brand":"MULTISPAN","name":"901 MCBUR 60 50 420 AL5 1S","sku":"","sysQty":5},{"id":"p1614","brand":"MULTISPAN","name":"VOLT-19-E3-N0","sku":"","sysQty":35},{"id":"p1615","brand":"MULTISPAN","name":"VOLT-23","sku":"","sysQty":8},{"id":"p1616","brand":"MULTISPAN","name":"EC3M01008","sku":"","sysQty":1},{"id":"p1617","brand":"MULTISPAN","name":"CUB5RLY0","sku":"","sysQty":1},{"id":"p1618","brand":"MULTISPAN","name":"AC01-T3-1R5G-B-W","sku":"","sysQty":2},{"id":"p1619","brand":"MULTISPAN","name":"KBD10-15","sku":"","sysQty":2},{"id":"p1620","brand":"MULTISPAN","name":"EMNGMH1","sku":"","sysQty":50},{"id":"p1621","brand":"MULTISPAN","name":"VPR-126-2R-A2-00","sku":"","sysQty":8},{"id":"p1622","brand":"MULTISPAN","name":"VPR-17U-4-00","sku":"","sysQty":5},{"id":"p1623","brand":"MULTISPAN","name":"VC-4DA","sku":"","sysQty":2},{"id":"p1624","brand":"MULTISPAN","name":"1C 6 Sqmm CU FR Cable - Yellow/Green","sku":"","sysQty":90},{"id":"p1625","brand":"MULTISPAN","name":"VPR-22","sku":"","sysQty":12},{"id":"p1626","brand":"MULTISPAN","name":"VPR-22U","sku":"","sysQty":58},{"id":"p1627","brand":"MULTISPAN","name":"VPR-33","sku":"","sysQty":1},{"id":"p1628","brand":"MULTISPAN","name":"VPR-33-02A","sku":"","sysQty":195},{"id":"p1629","brand":"MULTISPAN","name":"AC01-T3-5R5G-B-W","sku":"","sysQty":1},{"id":"p1630","brand":"MULTISPAN","name":"AC01-S2-1R5G-B-W","sku":"","sysQty":2},{"id":"p1631","brand":"MULTISPAN","name":"VH-0808ETP","sku":"","sysQty":1},{"id":"p1632","brand":"MULTISPAN","name":"PAXLR000","sku":"","sysQty":1},{"id":"p1633","brand":"MULTISPAN","name":"901 PMDD 85 45 00","sku":"","sysQty":70},{"id":"p1634","brand":"MULTISPAN","name":"VPR-33E-K-01","sku":"","sysQty":48},{"id":"p1635","brand":"MULTISPAN","name":"AE-04-012D-1-B-C (G2R) 11100018","sku":"","sysQty":1},{"id":"p1636","brand":"MULTISPAN","name":"PXU21AB0","sku":"","sysQty":10},{"id":"p1637","brand":"MULTISPAN","name":"RBS0810024D01","sku":"","sysQty":68},{"id":"p1638","brand":"MULTISPAN","name":"VPR-35-E3-00","sku":"","sysQty":55},{"id":"p1639","brand":"MULTISPAN","name":"VPR-35-E3-01","sku":"","sysQty":1},{"id":"p1640","brand":"MULTISPAN","name":"VR-3K-01","sku":"","sysQty":17},{"id":"p1641","brand":"MULTISPAN","name":"VR-3KN","sku":"","sysQty":2},{"id":"p1642","brand":"MULTISPAN","name":"VTR-632-E3-AA-11","sku":"","sysQty":3},{"id":"p1643","brand":"MULTISPAN","name":"WLC-35-A2-00","sku":"","sysQty":24}];
+
+const TEAMS = ['t1','t2','t3','t4','t5'];
+const TCFG = {
+  t1:{label:'Team 1',members:'Thejashwini / Raghu',     color:'#7eb8f7',countBrands:['UNISON','RENU'],                                verifyBrands:['MULTISPAN']},
+  t2:{label:'Team 2',members:'Sushma / Soumya',          color:'#f7c97e',countBrands:['ESBEE'],                                        verifyBrands:['SCHMERSAL']},
+  t3:{label:'Team 3',members:'Sandhya / Rithwik',       color:'#a87ef7',countBrands:['MISC','RED LION','OMRON','AGILITY','LEUZE'],      verifyBrands:['ESBEE','SBEE']},
+  t4:{label:'Team 4',members:'Pooja / Prathap',         color:'#f7a87e',countBrands:['SCHMERSAL'],                                     verifyBrands:['UNISON','RENU']},
+  t5:{label:'Team 5',members:'Iniyavan / Badal / Annada',color:'#7ef7c8',countBrands:['MULTISPAN'],                                   verifyBrands:['MISC','RED LION','OMRON','AGILITY','LEUZE']},
+};
+
+// ── GAS ───────────────────────────────────────────────────────────────────────
+function getGasUrl(){return localStorage.getItem('sv_gas_url')||'';}
+function resetConfig(){localStorage.removeItem('sv_gas_url');show('s-config');}
+
+async function gasCall(params){
+  const url=getGasUrl();
+  if(!url) throw new Error('No GAS URL configured');
+  const qs=new URLSearchParams(params).toString();
+  const res=await fetch(url+'?'+qs);
+  if(!res.ok) throw new Error('HTTP '+res.status);
+  const data=await res.json();
+  if(data.error) throw new Error(data.error);
+  return data;
+}
+
+async function saveGasUrl(){
+  const u=document.getElementById('gas-url-in').value.trim();
+  const errEl=document.getElementById('cfg-err');
+  errEl.style.display='none';
+  if(!u.startsWith('https://script.google.com')){
+    errEl.textContent='Must start with https://script.google.com';
+    errEl.style.display='block';return;
+  }
+  localStorage.setItem('sv_gas_url',u);
+  const btn=document.getElementById('connect-btn');
+  btn.disabled=true;btn.textContent='Connecting…';
+  try{
+    await seedProductsToSheet(u);
+    btn.disabled=false;btn.textContent='Connect & Seed Products →';
+    init();
+  }catch(e){
+    errEl.textContent='Failed: '+e.message;errEl.style.display='block';
+    btn.disabled=false;btn.textContent='Connect & Seed Products →';
+  }
+}
+
+async function seedProductsToSheet(gasUrl){
+  const BATCH=200;
+  const total=PRODUCT_DB.length;
+  const progEl=document.getElementById('cfg-prog');
+  const progTxt=document.getElementById('cfg-prog-txt');
+  const progFill=document.getElementById('cfg-prog-fill');
+  progEl.style.display='block';
+
+  for(let i=0;i<total;i+=BATCH){
+    const batch=PRODUCT_DB.slice(i,i+BATCH);
+    const pct=Math.round((i/total)*100);
+    progTxt.textContent=`Seeding products… ${i}/${total}`;
+    progFill.style.width=pct+'%';
+    const qs=new URLSearchParams({
+      action:'seedProducts',
+      products:JSON.stringify(batch),
+      offset:i,
+      total
+    }).toString();
+    const res=await fetch(gasUrl+'?'+qs);
+    const data=await res.json();
+    if(data.skipped){progTxt.textContent='Products already seeded ✓';progFill.style.width='100%';break;}
+    if(data.error) throw new Error(data.error);
+  }
+  progTxt.textContent='Done ✓ '+total+' products seeded';
+  progFill.style.width='100%';
+}
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let role=localStorage.getItem('sv_role')||null;
+let myName=localStorage.getItem('sv_name')||'';
+let currentTeam=null;
+let counts={},submitted={},names={};
+let dashTimer=null,actTimer=null;
+let openBrand=null,searchQ='';
+let saveQueue={},saveTimer=null;
+
+// ── UTILS ─────────────────────────────────────────────────────────────────────
+function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));document.getElementById(id).classList.add('on');}
+function fmtTime(iso){if(!iso)return'';try{return new Date(iso).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});}catch{return iso;}}
+function fmtDT(iso){if(!iso)return'';try{const d=new Date(iso);return d.toLocaleDateString([],{month:'short',day:'numeric'})+' '+d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});}catch{return iso;}}
+function getBrandProds(brand){return PRODUCT_DB.filter(p=>p.brand===brand);}
+function allBrands(){return[...new Set(PRODUCT_DB.map(p=>p.brand))];}
+function prodById(id){return PRODUCT_DB.find(p=>p.id===id);}
+
+// ── SAVE INDICATOR ────────────────────────────────────────────────────────────
+function showSaving(){
+  const ind=document.getElementById('save-ind');if(!ind)return;
+  ind.style.opacity='1';
+  document.getElementById('save-dot').className='save-dot';
+  document.getElementById('save-txt').textContent='saving…';
+}
+function showSaved(){
+  const ind=document.getElementById('save-ind');if(!ind)return;
+  document.getElementById('save-dot').className='save-dot saved';
+  document.getElementById('save-txt').textContent='saved';
+  setTimeout(()=>{ind.style.opacity='0';},2000);
+}
+
+// ── ROLE / NAV ────────────────────────────────────────────────────────────────
+function setRole(r){
+  if(!r){
+    localStorage.removeItem('sv_role');role=null;openBrand=null;
+    if(dashTimer){clearInterval(dashTimer);dashTimer=null;}
+    if(actTimer){clearInterval(actTimer);actTimer=null;}
+    loadRoleSelect();return;
+  }
+  role=r;localStorage.setItem('sv_role',r);init();
+}
+
+async function loadRoleSelect(){
+  show('s-role');
+  try{
+    const data=await gasCall({action:'getAll'});
+    names=data.names||{};
+    TEAMS.forEach(t=>{
+      const el=document.getElementById('rn-'+t);
+      if(names[t]){el.textContent='● '+names[t];el.style.display='block';}
+      else el.style.display='none';
+    });
+  }catch(e){console.warn('loadRoleSelect:',e);}
+}
+
+function pickTeam(team){
+  role=team;currentTeam=team;localStorage.setItem('sv_role',team);
+  if(myName){init();return;}
+  const cfg=TCFG[team];
+  document.getElementById('name-role-tag').textContent=cfg.label.toUpperCase();
+  document.getElementById('name-badge-label').textContent=cfg.label+' · '+cfg.members;
+  document.getElementById('name-dot').style.background=cfg.color;
+  document.getElementById('name-badge').style.borderColor=cfg.color+'55';
+  document.getElementById('name-input').value='';
+  show('s-name');
+  setTimeout(()=>document.getElementById('name-input').focus(),80);
+}
+
+async function confirmName(){
+  const n=document.getElementById('name-input').value.trim();
+  if(!n){document.getElementById('name-input').style.borderColor='var(--red)';return;}
+  myName=n;localStorage.setItem('sv_name',n);
+  try{await gasCall({action:'saveName',team:currentTeam,name:n});}catch(e){console.warn(e);}
+  await init();
+}
+
+async function init(){
+  if(!getGasUrl()){show('s-config');return;}
+  try{
+    const data=await gasCall({action:'getAll'});
+    counts=data.counts||{};submitted=data.submitted||{};names=data.names||{};
+  }catch(e){counts={};submitted={};names={};console.warn('init getAll failed:',e);}
+
+  if(role==='dashboard'){
+    show('s-dash');renderDash();
+    if(dashTimer)clearInterval(dashTimer);
+    dashTimer=setInterval(refreshDash,8000);
+  }else if(TEAMS.includes(role)){
+    currentTeam=role;
+    if(myName&&names[currentTeam]!==myName){
+      try{await gasCall({action:'saveName',team:currentTeam,name:myName});}catch(e){}
+    }
+    document.getElementById('team-role-tag').textContent=TCFG[currentTeam].label.toUpperCase();
+    document.getElementById('team-name-chip').textContent=myName?'· '+myName:'';
+    show('s-team');
+    searchQ='';document.getElementById('search-in').value='';
+    renderTeamBrands();
+    loadActivity();
+    if(actTimer)clearInterval(actTimer);
+    actTimer=setInterval(loadActivity,20000);
+  }else{
+    loadRoleSelect();
+  }
+}
+
+// ── ACTIVITY SIDEBAR ──────────────────────────────────────────────────────────
+async function loadActivity(){
+  try{
+    const data=await gasCall({action:'getActivity',team:currentTeam});
+    renderActivity(data.activity||[]);
+  }catch(e){
+    document.getElementById('activity-list').innerHTML='<div class="act-empty">Could not load</div>';
+  }
+}
+
+function renderActivity(items){
+  const el=document.getElementById('activity-list');
+  const cEl=document.getElementById('act-count');
+  if(!items.length){
+    el.innerHTML='<div class="act-empty">No entries yet.<br>Start counting to see your activity here.</div>';
+    cEl.textContent='0';return;
+  }
+  cEl.textContent=items.length;
+  el.innerHTML=items.map(item=>`
+    <div class="act-item">
+      <div class="act-pname" title="${item.productName||item.productId}">${item.productName||item.productId}</div>
+      <div class="act-row">
+        <span class="act-brand">${item.brand}</span>
+        <span class="act-ts">${fmtTime(item.ts)}</span>
+        <span class="act-qty">${item.qty}</span>
+      </div>
+    </div>`).join('');
+}
+
+// ── SEARCH ────────────────────────────────────────────────────────────────────
+function onSearch(q){
+  searchQ=q.toLowerCase().trim();
+  openBrand=searchQ?'__ALL__':null;
+  renderTeamBrands();
+}
+
+// ── TEAM BRAND ACCORDION ──────────────────────────────────────────────────────
+function renderTeamBrands(){
+  const cfg=TCFG[currentTeam];
+  const tc=counts[currentTeam]||{};
+  let html='<div class="section-lbl">Count</div>';
+  cfg.countBrands.forEach(b=>{html+=renderBrandSection(b,'count',tc);});
+  html+='<div class="section-lbl" style="margin-top:6px">Cross-check / Verify</div>';
+  cfg.verifyBrands.forEach(b=>{html+=renderBrandSection(b,'verify',tc);});
+  document.getElementById('team-brand-list').innerHTML=html;
+}
+
+function renderBrandSection(brand,sectionRole,tc){
+  const allBP=getBrandProds(brand);
+  const bp=searchQ
+    ?PRODUCT_DB.filter(p=>p.brand===brand&&(p.name.toLowerCase().includes(searchQ)||p.id.toLowerCase().includes(searchQ)))
+    :allBP;
+  if(!bp.length&&searchQ)return'';
+
+  const isSubmitted=!!(submitted[currentTeam]?.[brand]);
+  const subInfo=submitted[currentTeam]?.[brand];
+  const filled=allBP.filter(p=>tc[p.id]!==undefined).length;
+  const total=allBP.length;
+  const isOpen=(openBrand===brand||openBrand==='__ALL__')&&bp.length>0;
+  const isVerify=sectionRole==='verify';
+  const otherSubs=TEAMS.filter(t=>t!==currentTeam&&submitted[t]?.[brand]);
+
+  let badge='';
+  if(isSubmitted) badge=`<span class="badge b-ok">✓ submitted</span>`;
+  else if(filled===total&&filled>0) badge=`<span class="badge b-part" style="background:rgba(184,107,0,.12);color:var(--amb)">ready</span>`;
+  else if(filled>0) badge=`<span class="badge b-part">${filled}/${total}</span>`;
+  else if(otherSubs.length>0) badge=`<span class="badge b-vrfy">verify needed</span>`;
+  else badge=`<span class="badge b-pend">pending</span>`;
+
+  let cls='brand-section'+(isSubmitted?' is-submitted':'')+(isOpen?' is-open':'')+(isVerify?' is-verify':'');
+  const bid=brand.replace(/\s+/g,'_');
+
+  let h=`<div class="${cls}" id="bs-${bid}">
+    <button class="brand-toggle" onclick="toggleBrand(${JSON.stringify(brand)})">
+      <span class="bt-name">${brand}${isVerify?'<span style="font-size:9px;color:var(--acc);margin-left:5px;font-family:var(--mono)">VERIFY</span>':''}</span>
+      <span class="bt-cnt">${searchQ?bp.length+' match':total+' items'}</span>
+      ${badge}
+      ${otherSubs.length&&!isSubmitted?`<span style="font-family:var(--mono);font-size:10px;color:var(--amb)">${otherSubs.map(t=>TCFG[t].label).join(', ')} done</span>`:''}
+      <span class="bt-ch">▶</span>
+    </button>`;
+
+  if(isOpen){
+    h+=`<div class="brand-body" style="display:block">`;
+    bp.forEach(p=>{
+      const entry=tc[p.id];
+      const val=entry!==undefined?entry.qty:'';
+      const ts=entry?.ts?`updated ${fmtTime(entry.ts)}`:'';
+      h+=`<div class="prod-row">
+        <div class="prod-info">
+          <div class="pname">${p.name}</div>
+          <div class="pmeta">
+            ${p.sysQty>0?`<span>Sys: ${p.sysQty}</span>`:''}
+            ${ts?`<span class="ts-chip">${ts}</span>`:''}
+          </div>
+        </div>
+        <input type="number" min="0" class="cnt-in" value="${val}" placeholder="—"
+          id="cnt-${p.id}" ${isSubmitted?'disabled':''}
+          oninput="queueSave(${JSON.stringify(p.id)},this.value,${JSON.stringify(brand)})">
+      </div>`;
+    });
+    const dots=allBP.slice(0,Math.min(24,total)).map(p=>`<span class="pdot ${tc[p.id]!==undefined?'f':''}"></span>`).join('');
+    h+=`<div class="brand-footer">`;
+    if(isSubmitted){
+      h+=`<span class="bsub-meta">✓ ${fmtDT(subInfo.ts)}${subInfo.by?' · '+subInfo.by:''}</span>
+          <button class="btn btn-d btn-sm" onclick="unlockBrand(${JSON.stringify(brand)})">Edit</button>`;
+    }else{
+      h+=`<div style="display:flex;align-items:center;gap:8px;">
+            <div class="pdots">${dots}${total>24?`<span style="font-family:var(--mono);font-size:9px;color:var(--mut)"> +${total-24}</span>`:''}</div>
+            <span class="bmeta">${filled}/${total}</span>
+          </div>
+          <button class="btn btn-p btn-sm" onclick="submitBrand(${JSON.stringify(brand)})">Submit ${brand} →</button>`;
+    }
+    h+=`</div></div>`;
+  }
+  return h+`</div>`;
+}
+
+function toggleBrand(brand){openBrand=(openBrand===brand)?null:brand;renderTeamBrands();}
+
+// ── DEBOUNCED SAVE ────────────────────────────────────────────────────────────
+function queueSave(productId,val,brand){
+  if(!counts[currentTeam])counts[currentTeam]={};
+  const ts=new Date().toISOString();
+  if(val===''||isNaN(parseInt(val))){delete counts[currentTeam][productId];}
+  else{counts[currentTeam][productId]={qty:parseInt(val),ts,by:myName};}
+
+  // Update timestamp inline immediately
+  const inp=document.getElementById('cnt-'+productId);
+  if(inp){
+    const meta=inp.closest('.prod-row')?.querySelector('.pmeta');
+    if(meta){
+      const sysSpan=meta.querySelector('span:first-child')?.outerHTML||'';
+      meta.innerHTML=sysSpan+(val?`<span class="ts-chip">updated ${fmtTime(ts)}</span>`:'');
+    }
+  }
+
+  saveQueue[productId]={val,brand,ts};
+  showSaving();
+  if(saveTimer)clearTimeout(saveTimer);
+  saveTimer=setTimeout(flushSaves,800);
+}
+
+async function flushSaves(){
+  const q={...saveQueue};saveQueue={};
+  const promises=Object.entries(q)
+    .filter(([,{val}])=>val!==''&&!isNaN(parseInt(val)))
+    .map(([pid,{val,brand,ts}])=>
+      gasCall({action:'saveCount',team:currentTeam,productId:pid,qty:parseInt(val),ts,by:myName,brand})
+        .catch(e=>console.warn('saveCount failed',pid,e))
+    );
+  await Promise.all(promises);
+  showSaved();
+  loadActivity();
+}
+
+async function submitBrand(brand){
+  const bp=getBrandProds(brand);
+  const tc=counts[currentTeam]||{};
+  const filled=bp.filter(p=>tc[p.id]!==undefined).length;
+  if(!filled){alert('Enter at least one count before submitting.');return;}
+  if(filled<bp.length&&!confirm(`${bp.length-filled} item(s) still blank. Submit "${brand}" anyway?`))return;
+  const ts=new Date().toISOString();
+  try{
+    await gasCall({action:'submitBrand',team:currentTeam,brand,ts,by:myName});
+    if(!submitted[currentTeam])submitted[currentTeam]={};
+    submitted[currentTeam][brand]={ts,by:myName};
+  }catch(e){alert('Submit failed: '+e.message);return;}
+  openBrand=null;renderTeamBrands();
+}
+
+async function unlockBrand(brand){
+  if(!confirm(`Unlock "${brand}" to edit? Entries are preserved.`))return;
+  try{
+    await gasCall({action:'unlockBrand',team:currentTeam,brand});
+    if(submitted[currentTeam])delete submitted[currentTeam][brand];
+  }catch(e){alert('Unlock failed: '+e.message);return;}
+  openBrand=brand;renderTeamBrands();
+}
+
+// ── DASHBOARD ─────────────────────────────────────────────────────────────────
+async function refreshDash(){
+  try{
+    const data=await gasCall({action:'getAll'});
+    counts=data.counts||{};submitted=data.submitted||{};names=data.names||{};
+    renderDash();
+  }catch(e){console.warn('Dash refresh failed',e);}
+}
+
+function renderDash(){
+  document.getElementById('last-refresh').textContent='Updated '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const brands=allBrands();
+  let verified=0,mismatch=0,partial=0,pending=0;
+  brands.forEach(brand=>{
+    const subs=TEAMS.filter(t=>submitted[t]?.[brand]);
+    if(subs.length>=2){
+      const mm=getBrandProds(brand).some(p=>{
+        const v=subs.map(t=>counts[t]?.[p.id]?.qty).filter(v=>v!==undefined);
+        return v.length>=2&&!v.every(x=>x===v[0]);
+      });
+      if(mm)mismatch++;else verified++;
+    }else if(subs.length===1)partial++;
+    else pending++;
+  });
+
+  document.getElementById('dash-stats').innerHTML=`
+    <div class="sc"><div class="v vc">${brands.length}</div><div class="l">Brands</div></div>
+    <div class="sc"><div class="v" style="color:var(--mut)">${PRODUCT_DB.length}</div><div class="l">Products</div></div>
+    <div class="sc"><div class="v gc">${verified}</div><div class="l">Verified</div></div>
+    <div class="sc"><div class="v rc">${mismatch}</div><div class="l">Mismatched</div></div>
+    <div class="sc"><div class="v ac">${partial}</div><div class="l">Awaiting 2nd</div></div>
+    <div class="sc"><div class="v" style="color:var(--mut)">${pending}</div><div class="l">Pending</div></div>`;
+
+  const alertEl=document.getElementById('dash-alert');
+  if(mismatch>0) alertEl.innerHTML=`<div class="alert alert-w">⚠ ${mismatch} brand(s) have mismatches.</div>`;
+  else if(verified===brands.length&&brands.length>0) alertEl.innerHTML=`<div class="alert alert-g">✓ All brands verified. Ready to export.</div>`;
+  else alertEl.innerHTML='';
+
+  // Brand status grid
+  let bsHtml=`<div class="sec-ttl">Brand Status</div><div class="bsg-grid">`;
+  brands.forEach(brand=>{
+    const subs=TEAMS.filter(t=>submitted[t]?.[brand]);
+    const bp=getBrandProds(brand);
+    let cls='bsg-card',badge='';
+    if(subs.length>=2){
+      const mm=bp.some(p=>{const v=subs.map(t=>counts[t]?.[p.id]?.qty).filter(v=>v!==undefined);return v.length>=2&&!v.every(x=>x===v[0]);});
+      if(mm){cls+=' mismatch';badge=`<span class="badge b-mm">MISMATCH</span>`;}
+      else{cls+=' verified';badge=`<span class="badge b-ok">VERIFIED</span>`;}
+    }else if(subs.length===1){cls+=' partial';badge=`<span class="badge b-vrfy">NEEDS VERIFY</span>`;}
+    else badge=`<span class="badge b-pend">PENDING</span>`;
+
+    let teamRows=TEAMS.map(t=>{
+      const sub=submitted[t]?.[brand];if(!sub)return'';
+      const nm=names[t]||TCFG[t].label;
+      return`<div class="bsg-tr"><span class="tdot" style="background:${TCFG[t].color}"></span><span style="color:${TCFG[t].color}">${nm}</span><span class="bsg-ts">${fmtTime(sub.ts)}</span></div>`;
+    }).join('');
+    if(!teamRows) teamRows=`<div class="bsg-tr"><span style="color:var(--mut);font-family:var(--mono);font-size:10px">No submissions yet</span></div>`;
+
+    bsHtml+=`<div class="${cls}">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+        <div class="bsg-name">${brand}</div>${badge}
+      </div>
+      ${teamRows}
+      <div style="font-family:var(--mono);font-size:9px;color:var(--mut);margin-top:5px">${bp.length} products</div>
+    </div>`;
+  });
+  bsHtml+=`</div>`;
+  document.getElementById('dash-brand-status').innerHTML=bsHtml;
+
+  // Final table
+  const activeBrands=brands.filter(b=>TEAMS.some(t=>submitted[t]?.[b]));
+  if(!activeBrands.length){
+    document.getElementById('dash-final').innerHTML=`<div class="alert alert-i">Final comparison appears here once teams submit brands.</div>`;return;
+  }
+  const activeTeams=TEAMS.filter(t=>Object.keys(submitted[t]||{}).length>0);
+  let fHtml=`<div class="sec-ttl">Final Comparison</div>
+    <div class="tbl-wrap"><table><thead><tr>
+      <th>Product</th><th class="r">Sys</th>
+      ${activeTeams.map(t=>`<th class="r" style="color:${TCFG[t].color}">${names[t]||TCFG[t].label}</th>`).join('')}
+      <th>Status</th><th class="r">Final</th>
+    </tr></thead><tbody>`;
+
+  activeBrands.forEach(brand=>{
+    const bp=getBrandProds(brand);
+    const subTeams=TEAMS.filter(t=>submitted[t]?.[brand]);
+    const meta=subTeams.map(t=>`<span style="color:${TCFG[t].color};margin-left:8px">${names[t]||TCFG[t].label} ${fmtTime(submitted[t][brand].ts)}</span>`).join('');
+    fHtml+=`<tr class="brow"><td colspan="${3+activeTeams.length}">${brand}${meta}</td></tr>`;
+    bp.forEach(p=>{
+      const vals=subTeams.map(t=>counts[t]?.[p.id]?.qty);
+      const def=vals.filter(v=>v!==undefined);
+      let status,badge,final='—';
+      if(!subTeams.length||!def.length){status='PENDING';badge=`<span class="badge b-pend">PENDING</span>`;}
+      else if(subTeams.length===1){status='PARTIAL';badge=`<span class="badge b-part">1 TEAM</span>`;final=def[0];}
+      else if(def.length>=2&&def.every(v=>v===def[0])){status='MATCH';badge=`<span class="badge b-ok">MATCH</span>`;final=`<strong>${def[0]}</strong>`;}
+      else{status='MISMATCH';badge=`<span class="badge b-mm">MISMATCH</span>`;final='?';}
+      const cells=activeTeams.map(t=>{
+        if(!submitted[t]?.[brand])return`<td class="r"><span style="color:var(--mut)">—</span></td>`;
+        const v=counts[t]?.[p.id]?.qty;
+        return`<td class="r">${v!==undefined?v:`<span style="color:var(--mut)">—</span>`}</td>`;
+      }).join('');
+      const bg=status==='MISMATCH'?'background:rgba(229,77,46,.04)':status==='MATCH'?'background:rgba(45,122,79,.025)':'';
+      fHtml+=`<tr style="${bg}"><td>${p.name}</td><td class="r">${p.sysQty>0?p.sysQty:''}</td>${cells}<td>${badge}</td><td class="r">${final}</td></tr>`;
+    });
+  });
+  fHtml+=`</tbody></table></div>`;
+  document.getElementById('dash-final').innerHTML=fHtml;
+}
+
+// ── EXPORT ────────────────────────────────────────────────────────────────────
+function exportExcel(){
+  const brands=allBrands();
+  // Only teams that have submitted at least one brand
+  const activeTeams=TEAMS.filter(t=>Object.keys(submitted[t]||{}).length>0);
+  const teamHeaders=activeTeams.map(t=>(names[t]||TCFG[t].label)+' Qty');
+  const wb=XLSX.utils.book_new();
+
+  // ── Helper: build row array for one product ──────────────────────────────
+  function buildRow(brand,p,forSummary){
+    const subTeams=activeTeams.filter(t=>submitted[t]?.[brand]);
+    // One count value per active team — blank if that team hasn't submitted this brand
+    const vals=activeTeams.map(t=>
+      submitted[t]?.[brand] ? (counts[t]?.[p.id]?.qty??'') : ''
+    );
+    // Status uses only submitted teams' values
+    const def=subTeams.map(t=>counts[t]?.[p.id]?.qty).filter(v=>v!==undefined);
+    let status='PENDING',final='',diff='';
+    if(!def.length)           status='PENDING';
+    else if(subTeams.length<2){status='PARTIAL';final=def[0];}
+    else if(def.every(v=>v===def[0])){status='MATCH';final=def[0];diff=p.sysQty>0?final-p.sysQty:'';}
+    else                       status='MISMATCH';
+    if(forSummary) return [brand,p.name,p.sysQty||'',...vals,status,final,diff];
+    return [p.name,p.sysQty||'',...vals,status,final,diff];
+  }
+
+  // ── 1. Summary sheet — ALL brands, ALL products, one row each ────────────
+  const summaryHeader=['Brand','Product Name','System Qty',...teamHeaders,'Status','Final Qty','Diff vs System'];
+  const summaryRows=[
+    ['Stock Verification Report — Multispan Controls'],
+    ['Generated:',new Date().toLocaleString()],
+    ['Teams:',...activeTeams.map(t=>(names[t]||TCFG[t].label)+' ('+TCFG[t].members+')')],
+    [],
+    summaryHeader
+  ];
+  // Dedupe: track seen productIds to guarantee one row per product
+  const seenInSummary=new Set();
+  brands.forEach(brand=>{
+    getBrandProds(brand).forEach(p=>{
+      if(seenInSummary.has(p.id))return; // skip duplicates (shouldn't happen but safeguard)
+      seenInSummary.add(p.id);
+      summaryRows.push(buildRow(brand,p,true));
+    });
+  });
+  const sumWS=XLSX.utils.aoa_to_sheet(summaryRows);
+  sumWS['!cols']=[16,32,10,...activeTeams.map(()=>14),12,10,12].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb,sumWS,'Summary');
+
+  // ── 2. Per-brand sheets — only submitted brands ───────────────────────────
+  const brandHeader=['Product Name','System Qty',...teamHeaders,'Status','Final Qty','Diff vs System'];
+  brands.forEach(brand=>{
+    // Only create a sheet if at least one team has submitted this brand
+    const subTeams=activeTeams.filter(t=>submitted[t]?.[brand]);
+    if(!subTeams.length)return;
+
+    const sheetName=brand.slice(0,31).replace(/[\\/*?[\]:]/g,''); // Excel tab name limit
+    const brandRows=[
+      [brand+' — Stock Verification'],
+      ['Submitted by:',subTeams.map(t=>(names[t]||TCFG[t].label)+' at '+fmtDT(submitted[t][brand].ts)).join(' | ')],
+      [],
+      brandHeader
+    ];
+    // One row per product — dedupe by productId
+    const seenInBrand=new Set();
+    getBrandProds(brand).forEach(p=>{
+      if(seenInBrand.has(p.id))return;
+      seenInBrand.add(p.id);
+      brandRows.push(buildRow(brand,p,false));
+    });
+    const bWS=XLSX.utils.aoa_to_sheet(brandRows);
+    bWS['!cols']=[32,10,...activeTeams.map(()=>14),12,10,12].map(w=>({wch:w}));
+    XLSX.utils.book_append_sheet(wb,bWS,sheetName);
+  });
+
+  XLSX.writeFile(wb,`StockVerify_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+// ── BOOT ──────────────────────────────────────────────────────────────────────
+if(!getGasUrl()) show('s-config');
+else if(role&&TEAMS.includes(role)&&!myName) pickTeam(role);
+else if(role) init();
+else loadRoleSelect();
+</script>
+</body>
+</html>
