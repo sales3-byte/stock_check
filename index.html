@@ -362,15 +362,19 @@ const TCFG = {
 function getGasUrl(){return localStorage.getItem('sv_gas_url')||'';}
 function resetConfig(){localStorage.removeItem('sv_gas_url');show('s-config');}
 
-async function gasCall(params){
+function gasCall(params){
   const url=getGasUrl();
-  if(!url) throw new Error('No GAS URL configured');
-  const qs=new URLSearchParams(params).toString();
-  const res=await fetch(url+'?'+qs);
-  if(!res.ok) throw new Error('HTTP '+res.status);
-  const data=await res.json();
-  if(data.error) throw new Error(data.error);
-  return data;
+  if(!url) return Promise.reject(new Error('No GAS URL configured'));
+  return new Promise((resolve,reject)=>{
+    const cb='_gc_'+Date.now()+'_'+Math.random().toString(36).slice(2);
+    const t=setTimeout(()=>{ cleanup(); reject(new Error('Request timed out')); },30000);
+    function cleanup(){ delete window[cb]; if(s.parentNode) s.parentNode.removeChild(s); clearTimeout(t); }
+    window[cb]=function(data){ cleanup(); data&&data.error ? reject(new Error(data.error)) : resolve(data); };
+    const s=document.createElement('script');
+    s.src=url+'?'+new URLSearchParams({...params,callback:cb}).toString();
+    s.onerror=()=>{ cleanup(); reject(new Error('Script load failed')); };
+    document.head.appendChild(s);
+  });
 }
 
 async function saveGasUrl(){
@@ -385,7 +389,7 @@ async function saveGasUrl(){
   const btn=document.getElementById('connect-btn');
   btn.disabled=true;btn.textContent='Connecting…';
   try{
-    await seedProductsToSheet(u);
+    await seedProductsToSheet();
     btn.disabled=false;btn.textContent='Connect & Seed Products →';
     init();
   }catch(e){
@@ -394,7 +398,7 @@ async function saveGasUrl(){
   }
 }
 
-async function seedProductsToSheet(gasUrl){
+async function seedProductsToSheet(){
   const BATCH=200;
   const total=PRODUCT_DB.length;
   const progEl=document.getElementById('cfg-prog');
@@ -407,16 +411,8 @@ async function seedProductsToSheet(gasUrl){
     const pct=Math.round((i/total)*100);
     progTxt.textContent=`Seeding products… ${i}/${total}`;
     progFill.style.width=pct+'%';
-    const qs=new URLSearchParams({
-      action:'seedProducts',
-      products:JSON.stringify(batch),
-      offset:i,
-      total
-    }).toString();
-    const res=await fetch(gasUrl+'?'+qs);
-    const data=await res.json();
+    const data=await gasCall({action:'seedProducts',products:JSON.stringify(batch),offset:i,total});
     if(data.skipped){progTxt.textContent='Products already seeded ✓';progFill.style.width='100%';break;}
-    if(data.error) throw new Error(data.error);
   }
   progTxt.textContent='Done ✓ '+total+' products seeded';
   progFill.style.width='100%';
